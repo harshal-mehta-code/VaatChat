@@ -26,6 +26,7 @@ export default function VaatPlayer({ scenario }: VaatPlayerProps) {
   const [done, setDone] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const startedRef = useRef(false);
+  const lastPlayedRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (startedRef.current) return;
@@ -34,9 +35,21 @@ export default function VaatPlayer({ scenario }: VaatPlayerProps) {
     setMessages([{ key: `${turn.node.line.id}-0`, side: "character", item: turn.node.line }]);
     setChoices(turn.choices);
     setDone(turn.done);
-    void playAudio(turn.node.line.audio, turn.node.line.gujarati);
+    // Audio is handled by the autoplay effect below — no imperative play here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Reliably auto-play the newest character line, exactly once, whenever it
+  // appears — decoupled from click timing so tapping a reply fast can't skip
+  // Ba's audio (previously the learner's reply audio and Ba's line raced and
+  // cancelled each other via speechSynthesis.cancel()).
+  useEffect(() => {
+    const last = messages[messages.length - 1];
+    if (last && last.side === "character" && lastPlayedRef.current !== last.key) {
+      lastPlayedRef.current = last.key;
+      void playAudio(last.item.audio, last.item.gujarati);
+    }
+  }, [messages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -48,7 +61,6 @@ export default function VaatPlayer({ scenario }: VaatPlayerProps) {
       { key: `${choice.say.id}-${prev.length}`, side: "learner", item: choice.say, feedback: choice.feedback },
     ]);
     setChoices([]);
-    void playAudio(choice.say.audio, choice.say.gujarati);
 
     const turn = defaultVaatProvider.advance(scenario, choice);
     if (turn.done) {
@@ -61,7 +73,7 @@ export default function VaatPlayer({ scenario }: VaatPlayerProps) {
       { key: `${turn.node.line.id}-${prev.length}`, side: "character", item: turn.node.line },
     ]);
     setChoices(turn.choices);
-    void playAudio(turn.node.line.audio, turn.node.line.gujarati);
+    // The character line's audio plays via the autoplay effect above.
   }
 
   return (

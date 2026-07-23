@@ -71,6 +71,18 @@ export function knownItemIds(p: Progress): string[] {
   return Object.keys(p.cards);
 }
 
+export type ItemStatus = "new" | "learning" | "known";
+
+/** Learning status for any SRS-tracked id (vocab item or akshar). Drives the
+ *  "New / Learning / Known" chips so mastery reflects real practice, not a
+ *  one-way self-report toggle. */
+export function itemStatus(p: Progress, id: string): ItemStatus {
+  const c = p.cards[id];
+  if (!c) return "new";
+  if (c.state === 2 && c.stability >= 4) return "known";
+  return "learning";
+}
+
 // ── Mutators (return NEW progress; never mutate in place) ───────────────────
 
 /** Grade an item's SRS card, creating it on first sight. */

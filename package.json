@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "gen:audio": "node --experimental-strip-types scripts/generate-audio.ts"
   },
   "dependencies": {
     "next": "15.1.11",

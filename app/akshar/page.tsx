@@ -1,17 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { VOWELS, CONSONANTS } from "@/lib/content";
 import { useProgress } from "@/lib/client/useProgress";
+import { itemStatus } from "@/lib/core/progress";
 import AksharCard from "@/components/AksharCard";
 import BarakshariGrid from "@/components/BarakshariGrid";
+import AksharPractice from "@/components/AksharPractice";
 
 type Tab = "vowels" | "consonants" | "barakshari";
 
+const ALL_LETTERS = [...VOWELS, ...CONSONANTS];
+
 export default function AksharLabPage() {
-  const { progress, hydrated, markAkshar } = useProgress();
+  const { progress, hydrated } = useProgress();
   const [tab, setTab] = useState<Tab>("vowels");
+  const [practicing, setPracticing] = useState(false);
+
+  const knownCount = useMemo(
+    () => (hydrated ? ALL_LETTERS.filter((a) => itemStatus(progress, a.id) === "known").length : 0),
+    [progress, hydrated],
+  );
+
+  if (practicing) {
+    return (
+      <div className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-4 py-6">
+        <AksharPractice pool={ALL_LETTERS} onExit={() => setPracticing(false)} />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-[480px] flex-col gap-5 px-4 py-6 pb-16">
@@ -21,8 +39,33 @@ export default function AksharLabPage() {
         </Link>
         <h1 className="guj text-2xl">અક્ષર Lab</h1>
       </div>
+
+      {/* Practice CTA + mastery summary */}
+      <div className="rounded-2xl border border-peacock/40 bg-peacock/10 p-4">
+        <div className="mb-3 flex items-baseline justify-between">
+          <span className="text-sm font-semibold text-ink">
+            {knownCount} of {ALL_LETTERS.length} letters known
+          </span>
+          <span className="text-xs text-ink-soft">practice to master</span>
+        </div>
+        <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-surface-2">
+          <div
+            className="h-full rounded-full bg-peacock transition-[width]"
+            style={{ width: `${(knownCount / ALL_LETTERS.length) * 100}%` }}
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => setPracticing(true)}
+          className="w-full rounded-full bg-peacock px-6 py-3 text-base font-semibold text-on-accent active:scale-[.99]"
+        >
+          Practice letters →
+        </button>
+      </div>
+
       <p className="text-sm text-ink-soft">
-        Learn the Gujarati script, shape by shape. Tap a letter to reveal its mnemonic.
+        Browse the script below — tap any letter for its shape→sound hint — then hit{" "}
+        <span className="font-medium text-ink">Practice</span> to lock it into memory.
       </p>
 
       <div className="flex gap-2 rounded-full border border-line bg-surface-2 p-1">
@@ -49,12 +92,7 @@ export default function AksharLabPage() {
       {tab === "vowels" && (
         <div className="grid grid-cols-2 gap-3">
           {VOWELS.map((v) => (
-            <AksharCard
-              key={v.id}
-              akshar={v}
-              known={hydrated && progress.aksharMastered.includes(v.id)}
-              onMarkKnown={() => markAkshar(v.id)}
-            />
+            <AksharCard key={v.id} akshar={v} status={hydrated ? itemStatus(progress, v.id) : "new"} />
           ))}
         </div>
       )}
@@ -62,12 +100,7 @@ export default function AksharLabPage() {
       {tab === "consonants" && (
         <div className="grid grid-cols-2 gap-3">
           {CONSONANTS.map((c) => (
-            <AksharCard
-              key={c.id}
-              akshar={c}
-              known={hydrated && progress.aksharMastered.includes(c.id)}
-              onMarkKnown={() => markAkshar(c.id)}
-            />
+            <AksharCard key={c.id} akshar={c} status={hydrated ? itemStatus(progress, c.id) : "new"} />
           ))}
         </div>
       )}

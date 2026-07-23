@@ -21,29 +21,52 @@ export function sttSupported(): boolean {
   return "SpeechRecognition" in window || "webkitSpeechRecognition" in window;
 }
 
-let cachedGuVoice: SpeechSynthesisVoice | null | undefined;
+// Only ever cache a *found* voice — never cache a null result, because
+// getVoices() is populated asynchronously and returns [] on the first call in
+// many browsers. Caching null there would permanently fall back to the wrong
+// voice (a common cause of "odd pronunciation").
+let cachedGuVoice: SpeechSynthesisVoice | null = null;
 
-function guVoice(): SpeechSynthesisVoice | null {
+function pickGuVoice(): SpeechSynthesisVoice | null {
   if (!ttsSupported()) return null;
-  if (cachedGuVoice !== undefined) return cachedGuVoice;
+  if (cachedGuVoice) return cachedGuVoice;
   const voices = window.speechSynthesis.getVoices();
-  cachedGuVoice =
+  if (voices.length === 0) return null; // not loaded yet; try again next call
+  const found =
+    // Prefer a genuine Gujarati voice; among those, prefer a richer/neural one.
+    voices.find((v) => v.lang?.toLowerCase().startsWith("gu") && /google|neural|natural|wavenet/i.test(v.name)) ??
     voices.find((v) => v.lang?.toLowerCase().startsWith("gu")) ??
-    voices.find((v) => v.lang?.toLowerCase().startsWith("hi")) ?? // Hindi is a closer fallback than English
+    // Hindi shares most phonology with Gujarati — a closer fallback than English.
+    voices.find((v) => v.lang?.toLowerCase().startsWith("hi")) ??
     null;
-  return cachedGuVoice;
+  if (found) cachedGuVoice = found;
+  return found;
+}
+
+// Refresh the cache when the browser finishes loading its voice list.
+if (typeof window !== "undefined" && ttsSupported()) {
+  try {
+    window.speechSynthesis.onvoiceschanged = () => {
+      cachedGuVoice = null;
+      pickGuVoice();
+    };
+  } catch {
+    /* noop */
+  }
 }
 
 /** Speak Gujarati text via the browser. Returns false if TTS is unavailable. */
-export function speak(gujaratiText: string, rate = 0.9): boolean {
+export function speak(gujaratiText: string, rate = 0.85): boolean {
   if (!ttsSupported()) return false;
   const u = new SpeechSynthesisUtterance(gujaratiText);
-  const v = guVoice();
+  const v = pickGuVoice();
   if (v) u.voice = v;
   u.lang = v?.lang ?? "gu-IN";
   u.rate = rate;
   window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(u);
+  // A tiny defer avoids a Chrome/mobile quirk where speak() right after
+  // cancel() silently drops the utterance.
+  window.setTimeout(() => window.speechSynthesis.speak(u), 30);
   return true;
 }
 
