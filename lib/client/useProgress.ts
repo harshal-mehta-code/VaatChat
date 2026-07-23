@@ -16,6 +16,7 @@ import {
   completeLesson as _completeLesson,
   completeScenario as _completeScenario,
   markAksharMastered as _markAksharMastered,
+  completeGrammar as _completeGrammar,
   setOnboarding as _setOnboarding,
   award as _award,
 } from "../core/progress";
@@ -60,6 +61,10 @@ export function useProgress() {
     (aksharId: string) => update(_markAksharMastered(progressRef.current, aksharId)),
     [update],
   );
+  const completeGrammar = useCallback(
+    (conceptId: string) => update(_completeGrammar(progressRef.current, conceptId)),
+    [update],
+  );
   const finishOnboarding = useCallback(
     (goal: string, motivation: string) =>
       update(_setOnboarding(progressRef.current, goal, motivation)),
@@ -74,6 +79,7 @@ export function useProgress() {
     completeLesson,
     completeScenario,
     markAkshar,
+    completeGrammar,
     finishOnboarding,
     award,
     setProgress: update,

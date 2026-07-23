@@ -21,6 +21,11 @@
   AI voice) reuses it instead of a rewrite.
 - **Content is native-verified.** All Gujarati is an AI-drafted first pass; the
   owner + native-speaker network verify text/audio (see `docs/AUDIO_CHECKLIST.md`).
+- **A second pillar: Vyakaran (grammar), for "learn it properly."** Alongside the
+  conversation-first path, a structured, grammar-aware track serves the learner
+  who wants to understand *how the language works* — same SRS/gamification engine,
+  a third door beside Akshar & Vaat. Full design + syllabus in
+  [`docs/VYAKARAN.md`](./VYAKARAN.md).
 
 ---
 

@@ -27,6 +27,7 @@ import { ITEMS } from "../lib/content/units.ts";
 import { VOWELS, CONSONANTS, barakshariGrid } from "../lib/content/akshar.ts";
 import { SCENARIOS } from "../lib/content/scenarios.ts";
 import { barakshariAudioPath } from "../lib/content/audio-paths.ts";
+import { GRAMMAR_MODULES } from "../lib/content/grammar.ts";
 
 interface Clip {
   text: string; // Gujarati to speak
@@ -53,6 +54,13 @@ function collectClips(): Clip[] {
     for (const node of Object.values(s.nodes)) {
       add(node.line.gujarati, node.line.audio, `${s.character}: ${node.line.roman}`);
       for (const c of node.choices) add(c.say.gujarati, c.say.audio, `reply: ${c.say.roman}`);
+    }
+  }
+  for (const mod of GRAMMAR_MODULES) {
+    for (const concept of mod.concepts) {
+      for (const ex of concept.discovery.examples) {
+        add(ex.gujarati, ex.audio, `grammar: ${ex.roman}`);
+      }
     }
   }
   return clips;

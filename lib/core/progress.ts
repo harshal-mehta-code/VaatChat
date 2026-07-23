@@ -34,6 +34,8 @@ export interface Progress {
   completedScenarios: string[];
   /** Akshar ids the learner can recognize. */
   aksharMastered: string[];
+  /** Grammar concept ids the learner has worked through at least once. */
+  completedGrammar: string[];
 }
 
 export function freshProgress(now: Date = new Date()): Progress {
@@ -47,7 +49,13 @@ export function freshProgress(now: Date = new Date()): Progress {
     completedLessons: [],
     completedScenarios: [],
     aksharMastered: [],
+    completedGrammar: [],
   };
+}
+
+/** SRS card id for a grammar concept — a grammar pattern is a memory item too. */
+export function grammarCardId(conceptId: string): string {
+  return `g-${conceptId}`;
 }
 
 // ── Derived selectors ──────────────────────────────────────────────────────
@@ -123,6 +131,15 @@ export function markAksharMastered(p: Progress, aksharId: string, now: Date = ne
   return { ...next, aksharMastered: [...next.aksharMastered, aksharId] };
 }
 
+/** Mark a grammar concept done for this session: award XP + record completion.
+ *  (The concept's SRS card is graded separately via gradeItem(grammarCardId).) */
+export function completeGrammar(p: Progress, conceptId: string, now: Date = new Date()): Progress {
+  const already = p.completedGrammar.includes(conceptId);
+  let next = award(p, XP.grammarConcept, now);
+  if (!already) next = { ...next, completedGrammar: [...next.completedGrammar, conceptId] };
+  return next;
+}
+
 export function setOnboarding(p: Progress, goal: string, motivation: string): Progress {
   return { ...p, onboarded: true, goal, motivation };
 }
@@ -138,7 +155,9 @@ export function loadProgress(): Progress {
     if (!raw) return freshProgress();
     const parsed = JSON.parse(raw) as Progress;
     if (parsed.version !== 1) return freshProgress();
-    return parsed;
+    // Backfill any fields added since this profile was saved (e.g. grammar),
+    // so older localStorage data never crashes a new build.
+    return { ...freshProgress(), ...parsed };
   } catch {
     return freshProgress();
   }

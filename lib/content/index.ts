@@ -2,4 +2,5 @@
 export * from "./units";
 export * from "./akshar";
 export * from "./scenarios";
+export * from "./grammar";
 export * from "./meta";

@@ -155,6 +155,91 @@ export interface Scenario {
   nodes: Record<string, DialogueNode>;
 }
 
+// ── Vyakaran (grammar pillar) ──────────────────────────────────────────────
+// A parallel, structured track for learners who want to understand *how*
+// Gujarati works. Deliberately separate from the lexical Lesson/Exercise model
+// so the conversation-first path is untouched. See docs/VYAKARAN.md.
+
+/** One worked example in a concept's guided-discovery step. */
+export interface GrammarExample {
+  gujarati: string;
+  roman: string;
+  english: string;
+  /** Substring of `gujarati` to visually emphasize — the pattern/morpheme. */
+  highlight?: string;
+  /** Native audio for the example (same pipeline as LexItem). */
+  audio?: string;
+  /** A tiny gloss/aside, e.g. the gender of the noun. */
+  note?: string;
+}
+
+/**
+ * Production drill kinds for grammar. Each asks the learner to *produce* a form,
+ * not just recognize meaning:
+ *  - choose → pick the correct form (agreement, register, verb form)
+ *  - cloze  → fill a gap in a sentence by choosing the right form
+ *  - build  → arrange word tiles into a correct sentence (word order)
+ */
+export type GrammarExerciseKind = "choose" | "cloze" | "build";
+
+export interface GrammarOption {
+  /** The form shown on the option (Gujarati). */
+  text: string;
+  roman?: string;
+  correct: boolean;
+}
+
+export interface GrammarExercise {
+  id: string;
+  kind: GrammarExerciseKind;
+  /** The instruction/question, in English. */
+  prompt: string;
+  /** Sentence frame; for `cloze`, "___" marks the blank. */
+  frame?: string;
+  frameRoman?: string;
+  english?: string;
+  /** For choose/cloze: the options (exactly one correct in MVP). */
+  options?: GrammarOption[];
+  /** For build: the correct ordered Gujarati tokens. */
+  answer?: string[];
+  /** For build: romanization tokens parallel to `answer` (display aid). */
+  answerRoman?: string[];
+  /** Shown after answering — the "why" (reinforces the rule). */
+  explain?: string;
+}
+
+/** A single grammar pattern — taught by discovery, drilled, and SRS-tracked. */
+export interface GrammarConcept {
+  /** Stable slug. Used as an SRS item id with a "g-" prefix. */
+  id: string;
+  moduleId: string;
+  order: number;
+  /** English title, e.g. `"My" changes shape`. */
+  title: string;
+  /** One-line "what you'll get". */
+  blurb: string;
+  discovery: {
+    /** Framing line, e.g. "Notice what changes." */
+    intro: string;
+    examples: GrammarExample[];
+    /** The confirmed rule — kept to 2–3 sentences. */
+    rule: string;
+  };
+  /** The "aha for an English speaker" contrast. */
+  contrast?: string;
+  exercises: GrammarExercise[];
+}
+
+export interface GrammarModule {
+  id: string;
+  title: string;
+  gujaratiTitle: string;
+  blurb: string;
+  accent: "marigold" | "magenta" | "peacock";
+  order: number;
+  concepts: GrammarConcept[];
+}
+
 // ── Rewards (kind, culturally-themed gamification) ─────────────────────────
 
 export interface Reward {

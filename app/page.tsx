@@ -162,6 +162,24 @@ export default function Home() {
             </span>
           </Link>
           <Link
+            href="/vyakaran"
+            className="flex items-center gap-4 rounded-2xl border border-marigold/40 bg-marigold/10 p-4 transition-colors hover:bg-marigold/15 active:scale-[.99]"
+          >
+            <span className="text-3xl" aria-hidden="true">
+              🧩
+            </span>
+            <span className="flex flex-1 flex-col">
+              <span className="flex items-baseline gap-2">
+                <span className="guj text-base font-semibold text-ink">વ્યાકરણ</span>
+                <span className="text-sm font-semibold text-ink">Vyakaran</span>
+              </span>
+              <span className="text-xs text-ink-soft">Learn the grammar properly</span>
+            </span>
+            <span className="text-xl text-marigold" aria-hidden="true">
+              ›
+            </span>
+          </Link>
+          <Link
             href="/vaat"
             className="flex items-center gap-4 rounded-2xl border border-magenta/40 bg-magenta/10 p-4 transition-colors hover:bg-magenta/15 active:scale-[.99]"
           >
