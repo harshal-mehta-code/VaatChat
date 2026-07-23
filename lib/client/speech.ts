@@ -55,15 +55,39 @@ if (typeof window !== "undefined" && ttsSupported()) {
   }
 }
 
+// A single shared playback slot so a new sound always interrupts the previous
+// one (no overlapping audio when a button is tapped repeatedly).
+let currentAudio: HTMLAudioElement | null = null;
+
+/** Stop whatever is currently playing — recorded audio and/or TTS. */
+export function stopAudio(): void {
+  if (currentAudio) {
+    try {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+    } catch {
+      /* noop */
+    }
+    currentAudio = null;
+  }
+  if (ttsSupported()) {
+    try {
+      window.speechSynthesis.cancel();
+    } catch {
+      /* noop */
+    }
+  }
+}
+
 /** Speak Gujarati text via the browser. Returns false if TTS is unavailable. */
 export function speak(gujaratiText: string, rate = 0.85): boolean {
   if (!ttsSupported()) return false;
+  stopAudio(); // interrupt anything already playing
   const u = new SpeechSynthesisUtterance(gujaratiText);
   const v = pickGuVoice();
   if (v) u.voice = v;
   u.lang = v?.lang ?? "gu-IN";
   u.rate = rate;
-  window.speechSynthesis.cancel();
   // A tiny defer avoids a Chrome/mobile quirk where speak() right after
   // cancel() silently drops the utterance.
   window.setTimeout(() => window.speechSynthesis.speak(u), 30);
@@ -76,12 +100,18 @@ export function speak(gujaratiText: string, rate = 0.85): boolean {
  */
 export function playAudio(src: string | undefined, gujaratiFallback: string): Promise<void> {
   return new Promise((resolve) => {
+    stopAudio(); // interrupt any in-progress clip so nothing overlaps
     if (src) {
       const a = new Audio(src);
+      currentAudio = a;
+      a.onended = () => {
+        if (currentAudio === a) currentAudio = null;
+      };
       a.play()
         .then(() => resolve())
         .catch(() => {
           // File missing (placeholder) → TTS fallback.
+          if (currentAudio === a) currentAudio = null;
           speak(gujaratiFallback);
           resolve();
         });

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { VOWELS, barakshariGrid } from "@/lib/content";
-import { speak } from "@/lib/client/speech";
+import { playAudio } from "@/lib/client/speech";
+import { barakshariAudioPath } from "@/lib/content/audio-paths";
 
 export default function BarakshariGrid() {
   const rows = barakshariGrid();
@@ -39,7 +40,7 @@ export default function BarakshariGrid() {
                       type="button"
                       onClick={() => {
                         setHighlighted(key);
-                        speak(cell.combined);
+                        void playAudio(barakshariAudioPath(cell), cell.combined);
                       }}
                       className={`guj flex h-14 w-14 flex-col items-center justify-center rounded-lg text-lg transition-colors ${
                         isHi ? "bg-peacock text-on-accent" : "text-ink hover:bg-surface-2"

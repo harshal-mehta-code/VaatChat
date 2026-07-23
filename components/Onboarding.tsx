@@ -3,9 +3,11 @@
 // Three warm, quick onboarding steps: motivation → goal → first word.
 
 import { useState } from "react";
-import { MOTIVATIONS, GOAL_SUGGESTIONS } from "@/lib/content";
-import { speak } from "@/lib/client/speech";
+import { MOTIVATIONS, GOAL_SUGGESTIONS, ITEMS_BY_ID } from "@/lib/content";
+import { playAudio } from "@/lib/client/speech";
 import AudioButton from "./AudioButton";
+
+const KEM_CHO = ITEMS_BY_ID["kem-cho"];
 
 interface OnboardingProps {
   onFinish: (goal: string, motivation: string) => void;
@@ -150,11 +152,12 @@ export default function Onboarding({ onFinish }: OnboardingProps) {
             Every journey starts with hello. Listen, then say it out loud.
           </p>
           <div className="flex flex-col items-center gap-4 rounded-2xl border border-line bg-surface p-8 text-center shadow-[var(--shadow)]">
-            <div className="guj text-4xl font-medium text-ink">કેમ છો?</div>
-            <div className="text-lg text-ink-soft">Kem cho?</div>
+            <div className="guj text-4xl font-medium text-ink">{KEM_CHO.gujarati}</div>
+            <div className="text-lg text-ink-soft">{KEM_CHO.roman}</div>
             <div className="text-sm text-ink-soft">&ldquo;How are you?&rdquo;</div>
             <AudioButton
-              gujarati="કેમ છો?"
+              src={KEM_CHO.audio}
+              gujarati={KEM_CHO.gujarati}
               label="Play Kem cho"
               size="lg"
             />
@@ -163,7 +166,7 @@ export default function Onboarding({ onFinish }: OnboardingProps) {
             type="button"
             onClick={() => {
               setSaid(true);
-              speak("કેમ છો?");
+              void playAudio(KEM_CHO.audio, KEM_CHO.gujarati);
             }}
             className={`mt-6 w-full rounded-full border px-6 py-3.5 text-base font-semibold transition-colors ${
               said

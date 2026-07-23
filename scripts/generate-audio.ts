@@ -24,8 +24,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { ITEMS } from "../lib/content/units.ts";
-import { VOWELS, CONSONANTS } from "../lib/content/akshar.ts";
+import { VOWELS, CONSONANTS, barakshariGrid } from "../lib/content/akshar.ts";
 import { SCENARIOS } from "../lib/content/scenarios.ts";
+import { barakshariAudioPath } from "../lib/content/audio-paths.ts";
 
 interface Clip {
   text: string; // Gujarati to speak
@@ -45,6 +46,9 @@ function collectClips(): Clip[] {
 
   for (const it of ITEMS) add(it.gujarati, it.audio, `word: ${it.roman}`);
   for (const a of [...VOWELS, ...CONSONANTS]) add(a.char, a.audio, `letter: ${a.roman}`);
+  for (const { cells } of barakshariGrid()) {
+    for (const cell of cells) add(cell.combined, barakshariAudioPath(cell), `barakshari: ${cell.roman}`);
+  }
   for (const s of SCENARIOS) {
     for (const node of Object.values(s.nodes)) {
       add(node.line.gujarati, node.line.audio, `${s.character}: ${node.line.roman}`);
