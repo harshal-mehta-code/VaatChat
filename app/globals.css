@@ -1,0 +1,123 @@
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────────────────────────────────
+   VaatChat design system — a "bandhani" palette (Gujarati tie-dye): warm
+   turmeric paper, deep aubergine-indigo ink, marigold + magenta + peacock
+   accents. Deliberately NOT the cream+terracotta default.
+
+   Semantic tokens live as CSS vars so they flip per theme; @theme inline maps
+   them to Tailwind utilities (bg-bg, text-ink, text-marigold, …).
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --bg: #fbf6ec;
+  --surface: #ffffff;
+  --surface-2: #f5eedf;
+  --ink: #241141;
+  --ink-soft: #5a4a72;
+  --line: #e6dbc7;
+  --marigold: #e8890c;
+  --magenta: #c42b6b;
+  --peacock: #1e7a82;
+  --on-accent: #ffffff;
+  --good: #2f8f57;
+  --bad: #c4442b;
+  --shadow: 0 1px 2px rgba(36, 17, 65, 0.05), 0 8px 28px rgba(36, 17, 65, 0.07);
+  --radius: 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #180e2b;
+    --surface: #241640;
+    --surface-2: #1f1436;
+    --ink: #f3e9da;
+    --ink-soft: #b6a6c9;
+    --line: #362554;
+    --marigold: #f5a63a;
+    --magenta: #e7629b;
+    --peacock: #4fbac2;
+    --on-accent: #180e2b;
+    --good: #57c98a;
+    --bad: #f08a76;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 10px 34px rgba(0, 0, 0, 0.35);
+  }
+}
+
+/* Explicit toggle wins over the media query in both directions. */
+:root[data-theme="light"] {
+  --bg: #fbf6ec; --surface: #ffffff; --surface-2: #f5eedf; --ink: #241141;
+  --ink-soft: #5a4a72; --line: #e6dbc7; --marigold: #e8890c; --magenta: #c42b6b;
+  --peacock: #1e7a82; --on-accent: #ffffff; --good: #2f8f57; --bad: #c4442b;
+  --shadow: 0 1px 2px rgba(36, 17, 65, 0.05), 0 8px 28px rgba(36, 17, 65, 0.07);
+}
+:root[data-theme="dark"] {
+  --bg: #180e2b; --surface: #241640; --surface-2: #1f1436; --ink: #f3e9da;
+  --ink-soft: #b6a6c9; --line: #362554; --marigold: #f5a63a; --magenta: #e7629b;
+  --peacock: #4fbac2; --on-accent: #180e2b; --good: #57c98a; --bad: #f08a76;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 10px 34px rgba(0, 0, 0, 0.35);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-line: var(--line);
+  --color-marigold: var(--marigold);
+  --color-magenta: var(--magenta);
+  --color-peacock: var(--peacock);
+  --color-on-accent: var(--on-accent);
+  --color-good: var(--good);
+  --color-bad: var(--bad);
+  --radius-card: var(--radius);
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  /* Faint rangoli dot texture. */
+  background-image: radial-gradient(var(--line) 1px, transparent 1.4px);
+  background-size: 26px 26px;
+  background-attachment: fixed;
+}
+
+/* Gujarati script rendering — let the OS pick its best Gujarati face. */
+.guj {
+  font-family: "Noto Sans Gujarati", "Shruti", "Gujarati Sangam MN", sans-serif;
+  line-height: 1.35;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-serif);
+  text-wrap: balance;
+  line-height: 1.12;
+}
+
+:focus-visible {
+  outline: 2px solid var(--peacock);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

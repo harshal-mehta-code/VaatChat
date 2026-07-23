@@ -3,8 +3,24 @@
 > **વાત (vaat)** = *talk · conversation · story.*
 > A fun, frictionless, research-backed, gamified app for learning Gujarati — built conversation-first, for the people who actually want to learn it.
 
-**Status:** Proposal / draft for review. No code yet.
-**Author:** Claude (Opus 4.8) · **Date:** 2026-07-22
+**Status:** Building MVP prototype (web). Core + content scaffolded.
+**Author:** Claude · **Date:** 2026-07-22
+
+## Decisions locked in (from review)
+
+- **Primary target: the zero-exposure beginner** (e.g. a partner marrying into a
+  Gujarati family) — get them to *conversational* fast. Heritage fast-track stays,
+  but the default experience assumes no prior Gujarati.
+- **Spoken-first, script-parallel.** Speaking is never gated behind the alphabet;
+  **Akshar Lab** runs as its own optional track and romanization fades over time.
+- **Vaat Mode ships as scripted branching dialogue** — free, offline, and
+  zero-hallucination (every line native-verifiable). A pluggable provider allows a
+  free-tier LLM (e.g. Gemini) for open-ended chat later. No paid API key required.
+- **Web-first on Vercel now → iOS later.** All learning logic lives in a portable,
+  framework-agnostic core (`lib/core/*`) so the iOS app (Apple on-device speech +
+  AI voice) reuses it instead of a rewrite.
+- **Content is native-verified.** All Gujarati is an AI-drafted first pass; the
+  owner + native-speaker network verify text/audio (see `docs/AUDIO_CHECKLIST.md`).
 
 ---
 
