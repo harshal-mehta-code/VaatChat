@@ -14,7 +14,8 @@
     "check:strokes": "node --experimental-strip-types scripts/check-strokes.ts",
     "gen:review": "node --experimental-strip-types scripts/gen-review-sheet.ts",
     "check:sync": "node --experimental-strip-types scripts/check-sync.ts",
-    "migrate": "node --env-file=.env.local --experimental-strip-types scripts/migrate.ts"
+    "migrate": "node --env-file=.env.local --experimental-strip-types scripts/migrate.ts",
+    "check:rls": "node --env-file=.env.local --experimental-strip-types scripts/check-rls.ts"
   },
   "dependencies": {
     "@supabase/ssr": "0.7.0",

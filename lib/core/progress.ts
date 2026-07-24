@@ -206,10 +206,18 @@ export function loadProgress(): Progress {
   }
 }
 
-export function saveProgress(p: Progress, now: Date = new Date()): void {
+/** Stamp a write time. Kept separate from saving so the value that goes into
+ *  memory and the value that goes to disk are the same object — the merge in
+ *  lib/core/sync.ts settles scalar fields on it, and a stale copy in memory
+ *  would quietly lose those tie-breaks. */
+export function touchProgress(p: Progress, now: Date = new Date()): Progress {
+  return { ...p, updatedAt: now.toISOString() };
+}
+
+export function saveProgress(p: Progress): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(KEY, JSON.stringify({ ...p, updatedAt: now.toISOString() }));
+    window.localStorage.setItem(KEY, JSON.stringify(p));
   } catch {
     /* storage full / disabled — non-fatal for a prototype */
   }

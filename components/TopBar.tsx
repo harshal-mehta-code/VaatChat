@@ -4,6 +4,7 @@
 // dev "reset" tucked into a small menu so it can't be tapped by accident.
 
 import { useState } from "react";
+import Link from "next/link";
 import { streakAlive } from "@/lib/core/gamification";
 import { resetProgress } from "@/lib/core/progress";
 import type { Progress } from "@/lib/core/progress";
@@ -45,7 +46,15 @@ export default function TopBar({ progress }: TopBarProps) {
             <span aria-hidden="true">⋯</span>
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-11 z-10 w-40 overflow-hidden rounded-[16px] border border-line bg-surface shadow-[var(--shadow)]">
+            <div className="absolute right-0 top-11 z-10 w-44 overflow-hidden rounded-[16px] border border-line bg-surface shadow-[var(--shadow)]">
+              <Link
+                href="/account"
+                onClick={() => setMenuOpen(false)}
+                className="block px-3 py-2.5 text-left text-sm text-ink hover:bg-surface-2"
+              >
+                Your progress
+              </Link>
+              <div className="h-px bg-line" />
               <button
                 type="button"
                 onClick={() => {

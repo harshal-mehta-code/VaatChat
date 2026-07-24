@@ -22,8 +22,10 @@ import {
   completeGrammar as _completeGrammar,
   setOnboarding as _setOnboarding,
   award as _award,
+  touchProgress,
 } from "../core/progress";
 import type { Grade3 } from "../core/srs";
+import { useCloudSync, type CloudSync } from "./useCloudSync";
 
 export interface ProgressApi {
   progress: Progress;
@@ -36,6 +38,8 @@ export interface ProgressApi {
   finishOnboarding: (goal: string, motivation: string, wantsGrammar?: boolean) => void;
   award: (xp: number) => void;
   setProgress: (next: Progress) => void;
+  /** Cross-device sync. Always present; `status: "off"` when unconfigured. */
+  sync: CloudSync;
 }
 
 function useProgressState(): ProgressApi {
@@ -56,9 +60,10 @@ function useProgressState(): ProgressApi {
   }, []);
 
   const update = useCallback((next: Progress) => {
-    progressRef.current = next;
-    setProgress(next);
-    saveProgress(next);
+    const stamped = touchProgress(next);
+    progressRef.current = stamped;
+    setProgress(stamped);
+    saveProgress(stamped);
   }, []);
 
   const gradeItem = useCallback(
@@ -88,6 +93,11 @@ function useProgressState(): ProgressApi {
   );
   const award = useCallback((xp: number) => update(_award(progressRef.current, xp)), [update]);
 
+  // Reconciles this device with the cloud when someone's signed in. Deliberately
+  // last: it observes progress and can write back, but nothing above depends on
+  // it, so the app is identical with sync switched off.
+  const sync = useCloudSync(progress, update, hydrated);
+
   return {
     progress,
     hydrated,
@@ -99,6 +109,7 @@ function useProgressState(): ProgressApi {
     finishOnboarding,
     award,
     setProgress: update,
+    sync,
   };
 }
 
