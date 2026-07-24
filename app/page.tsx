@@ -5,17 +5,20 @@ import { useProgress } from "@/lib/client/useProgress";
 import { getLevel, dueItemIds } from "@/lib/core/progress";
 import {
   nextLesson as computeNextLesson,
+  nextConcept as computeNextConcept,
   lessonUnlocked,
   unitComplete,
   unitUnlocked,
 } from "@/lib/core/progression";
-import { UNITS } from "@/lib/content";
+import { prefersGrammarFirst } from "@/lib/core/personalize";
+import { UNITS, GRAMMAR_MODULES } from "@/lib/content";
 import Onboarding from "@/components/Onboarding";
 import TopBar from "@/components/TopBar";
 import LevelBar from "@/components/LevelBar";
 import { ACCENT_BG, ACCENT_TEXT, ACCENT_SOFT_BG } from "@/components/accent";
 
 const ORDERED_UNITS = [...UNITS].sort((a, b) => a.order - b.order);
+const ORDERED_MODULES = [...GRAMMAR_MODULES].sort((a, b) => a.order - b.order);
 
 export default function Home() {
   const { progress, hydrated, finishOnboarding } = useProgress();
@@ -36,6 +39,12 @@ export default function Home() {
   const dueCount = dueItemIds(progress).length;
   const nextLsn = computeNextLesson(ORDERED_UNITS, progress);
   const finishedAll = !nextLsn;
+
+  // Grammar-first learners (the "teach me properly" onboarding signal) get the
+  // Vyakaran pillar promoted onto the home screen; for everyone else it stays
+  // quietly in Explore.
+  const grammarFirst = prefersGrammarFirst(progress);
+  const nextCncpt = grammarFirst ? computeNextConcept(ORDERED_MODULES, progress) : undefined;
 
   return (
     <div className="mx-auto flex w-full max-w-[480px] flex-col gap-7 px-4 py-6 pb-24">
@@ -72,6 +81,24 @@ export default function Home() {
               {finishedAll ? "✨" : "▶"}
             </span>
           </Link>
+          {grammarFirst && (
+            <Link
+              href={nextCncpt ? `/vyakaran/${nextCncpt.id}` : "/vyakaran"}
+              className="mt-2 flex items-center justify-between gap-3 rounded-2xl bg-peacock px-5 py-3.5 text-on-accent transition-transform active:scale-[.99]"
+            >
+              <span className="flex flex-col text-left">
+                <span className="text-[11px] font-medium uppercase tracking-wide opacity-80">
+                  {nextCncpt ? "Learn it properly · Vyakaran" : "Vyakaran — keep it sharp"}
+                </span>
+                <span className="text-base font-semibold">
+                  {nextCncpt ? nextCncpt.title : "Review your grammar"}
+                </span>
+              </span>
+              <span className="text-xl" aria-hidden="true">
+                🧩
+              </span>
+            </Link>
+          )}
           {dueCount > 0 && (
             <Link
               href="/review"

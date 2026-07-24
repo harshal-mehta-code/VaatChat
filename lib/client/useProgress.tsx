@@ -33,7 +33,7 @@ export interface ProgressApi {
   completeScenario: (scenarioId: string) => void;
   markAkshar: (aksharId: string) => void;
   completeGrammar: (conceptId: string) => void;
-  finishOnboarding: (goal: string, motivation: string) => void;
+  finishOnboarding: (goal: string, motivation: string, wantsGrammar?: boolean) => void;
   award: (xp: number) => void;
   setProgress: (next: Progress) => void;
 }
@@ -82,8 +82,8 @@ function useProgressState(): ProgressApi {
     [update],
   );
   const finishOnboarding = useCallback(
-    (goal: string, motivation: string) =>
-      update(_setOnboarding(progressRef.current, goal, motivation)),
+    (goal: string, motivation: string, wantsGrammar = false) =>
+      update(_setOnboarding(progressRef.current, goal, motivation, wantsGrammar)),
     [update],
   );
   const award = useCallback((xp: number) => update(_award(progressRef.current, xp)), [update]);

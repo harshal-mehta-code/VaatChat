@@ -24,6 +24,9 @@ export interface Progress {
   goal?: string;
   /** Chosen motivation bucket from onboarding. */
   motivation?: string;
+  /** Depth signal from onboarding: wants the formal, grammar-first path
+   *  surfaced (orthogonal to motivation — you can want both). */
+  wantsGrammar?: boolean;
   /** Whether onboarding is complete. */
   onboarded: boolean;
   xp: number;
@@ -140,8 +143,13 @@ export function completeGrammar(p: Progress, conceptId: string, now: Date = new 
   return next;
 }
 
-export function setOnboarding(p: Progress, goal: string, motivation: string): Progress {
-  return { ...p, onboarded: true, goal, motivation };
+export function setOnboarding(
+  p: Progress,
+  goal: string,
+  motivation: string,
+  wantsGrammar = false,
+): Progress {
+  return { ...p, onboarded: true, goal, motivation, wantsGrammar };
 }
 
 // ── Storage adapter (localStorage; SSR-safe) ────────────────────────────────

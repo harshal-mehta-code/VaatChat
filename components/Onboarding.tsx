@@ -10,7 +10,7 @@ import AudioButton from "./AudioButton";
 const KEM_CHO = ITEMS_BY_ID["kem-cho"];
 
 interface OnboardingProps {
-  onFinish: (goal: string, motivation: string) => void;
+  onFinish: (goal: string, motivation: string, wantsGrammar: boolean) => void;
 }
 
 const TOTAL_STEPS = 3;
@@ -18,6 +18,7 @@ const TOTAL_STEPS = 3;
 export default function Onboarding({ onFinish }: OnboardingProps) {
   const [step, setStep] = useState(0);
   const [motivationId, setMotivationId] = useState<string | null>(null);
+  const [wantsGrammar, setWantsGrammar] = useState(false);
   const [goal, setGoal] = useState<string>("");
   const [customGoal, setCustomGoal] = useState("");
   const [said, setSaid] = useState(false);
@@ -27,7 +28,7 @@ export default function Onboarding({ onFinish }: OnboardingProps) {
   function finish() {
     const finalGoal = effectiveGoal || GOAL_SUGGESTIONS[0];
     const finalMotivation = motivationId ?? MOTIVATIONS[0].id;
-    onFinish(finalGoal, finalMotivation);
+    onFinish(finalGoal, finalMotivation, wantsGrammar);
   }
 
   return (
@@ -71,6 +72,35 @@ export default function Onboarding({ onFinish }: OnboardingProps) {
               </button>
             ))}
           </div>
+
+          {/* Depth signal — orthogonal to the "why". One tap, no extra step. */}
+          <button
+            type="button"
+            aria-pressed={wantsGrammar}
+            onClick={() => setWantsGrammar((v) => !v)}
+            className={`mt-4 flex items-center gap-3 rounded-2xl border p-4 text-left transition-colors ${
+              wantsGrammar ? "border-peacock bg-peacock/10" : "border-line bg-surface hover:bg-surface-2"
+            }`}
+          >
+            <span className="text-2xl" aria-hidden="true">
+              📚
+            </span>
+            <span className="flex flex-1 flex-col">
+              <span className="text-sm font-semibold text-ink">Teach me properly</span>
+              <span className="mt-0.5 text-xs text-ink-soft">
+                Grammar and all — I want to understand how it works.
+              </span>
+            </span>
+            <span
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs ${
+                wantsGrammar ? "border-peacock bg-peacock text-on-accent" : "border-line text-transparent"
+              }`}
+              aria-hidden="true"
+            >
+              ✓
+            </span>
+          </button>
+
           <div className="mt-auto pt-6">
             <button
               type="button"
