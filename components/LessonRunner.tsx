@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Exercise, LexItem, Lesson } from "@/lib/core/types";
 import type { Grade3 } from "@/lib/core/srs";
-import { ITEMS_BY_ID, UNITS_BY_ID, funFactFor } from "@/lib/content";
+import { ITEMS_BY_ID, UNITS_BY_ID, funFactFor, tipForLesson, type GrammarTip } from "@/lib/content";
 import { XP } from "@/lib/core/gamification";
 import { useProgress } from "@/lib/client/useProgress";
 import { playAudio, listenOnce, sttSupported } from "@/lib/client/speech";
@@ -16,16 +16,43 @@ interface LessonRunnerProps {
   lesson: Lesson;
 }
 
+type Step =
+  | { kind: "exercise"; exercise: Exercise }
+  | { kind: "tip"; tip: GrammarTip };
+
+/**
+ * Lesson steps = its exercises, with the lesson's grammar tip (if it has one)
+ * inserted after the last intro/predict — i.e. once every word has been met,
+ * but before the drills. Grammar in context, at the moment it pays off.
+ */
+function buildSteps(lesson: Lesson): Step[] {
+  const steps: Step[] = lesson.exercises.map((exercise) => ({ kind: "exercise", exercise }));
+  const tip = tipForLesson(lesson.id);
+  if (!tip) return steps;
+
+  const lastIntro = lesson.exercises.reduce(
+    (last, ex, i) => (ex.kind === "intro" || ex.kind === "predict" ? i : last),
+    -1,
+  );
+  steps.splice(lastIntro + 1, 0, { kind: "tip", tip });
+  return steps;
+}
+
 export default function LessonRunner({ lesson }: LessonRunnerProps) {
   const { progress, gradeItem, completeLesson } = useProgress();
   const [index, setIndex] = useState(0);
   const [done, setDone] = useState(false);
 
-  const total = lesson.exercises.length;
-  const exercise = lesson.exercises[index];
+  // The lesson's steps: its exercises, plus (for some lessons) one grammar tip
+  // slipped in right after the introduction phase — the learner has just met
+  // every word, so the pattern connecting them lands before the drills start.
+  const steps = useMemo(() => buildSteps(lesson), [lesson]);
+  const total = steps.length;
+  const step = steps[index];
+  const exercise = step?.kind === "exercise" ? step.exercise : undefined;
 
   function handleAdvance(grade: Grade3 | null) {
-    if (grade) gradeItem(exercise.itemId, grade);
+    if (grade && exercise) gradeItem(exercise.itemId, grade);
     if (index + 1 >= total) {
       completeLesson(lesson.id);
       setDone(true);
@@ -76,8 +103,8 @@ export default function LessonRunner({ lesson }: LessonRunnerProps) {
     );
   }
 
-  const item = ITEMS_BY_ID[exercise.itemId];
-  if (!item) {
+  const item = exercise ? ITEMS_BY_ID[exercise.itemId] : undefined;
+  if (step?.kind === "exercise" && !item) {
     return (
       <div className="mx-auto max-w-[480px] px-6 py-10 text-center text-ink-soft">
         Something&apos;s missing for this exercise.{" "}
@@ -87,7 +114,7 @@ export default function LessonRunner({ lesson }: LessonRunnerProps) {
       </div>
     );
   }
-  const distractors = (exercise.distractorIds ?? [])
+  const distractors = (exercise?.distractorIds ?? [])
     .map((id) => ITEMS_BY_ID[id])
     .filter((i): i is LexItem => Boolean(i));
 
@@ -108,13 +135,64 @@ export default function LessonRunner({ lesson }: LessonRunnerProps) {
         </span>
       </div>
 
-      <ExerciseView
-        key={exercise.id}
-        exercise={exercise}
-        item={item}
-        distractors={distractors}
-        onAdvance={handleAdvance}
-      />
+      {step?.kind === "tip" ? (
+        <GrammarTipCard key={step.tip.id} tip={step.tip} onContinue={() => handleAdvance(null)} />
+      ) : (
+        exercise &&
+        item && (
+          <ExerciseView
+            key={exercise.id}
+            exercise={exercise}
+            item={item}
+            distractors={distractors}
+            onAdvance={handleAdvance}
+          />
+        )
+      )}
+    </div>
+  );
+}
+
+/**
+ * A grammar tip inside a vocab lesson: one pattern, phrased around the words
+ * just learned, with a door into the full Vyakaran concept for anyone who
+ * wants the whole story. Reading beat only — nothing to get wrong, no grading.
+ */
+function GrammarTipCard({ tip, onContinue }: { tip: GrammarTip; onContinue: () => void }) {
+  return (
+    <div className="flex flex-1 flex-col">
+      <div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-peacock">
+        <span aria-hidden="true">🧩</span> Grammar tip
+      </div>
+
+      <div className="flex flex-1 flex-col gap-4 rounded-2xl border border-peacock/40 bg-peacock/10 p-5">
+        <h2 className="text-lg font-semibold text-ink">{tip.title}</h2>
+        <p className="text-sm leading-relaxed text-ink">{tip.body}</p>
+
+        <div className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4">
+          <AudioButton src={tip.example.audio} gujarati={tip.example.gujarati} size="sm" />
+          <div>
+            <div className="guj text-xl font-medium text-ink">{tip.example.gujarati}</div>
+            <div className="text-xs text-ink-soft">{tip.example.roman}</div>
+            <div className="mt-0.5 text-sm text-ink">{tip.example.english}</div>
+          </div>
+        </div>
+
+        <Link
+          href={`/vyakaran/${tip.conceptId}`}
+          className="text-center text-xs font-semibold text-peacock underline-offset-2 hover:underline"
+        >
+          Learn this properly in Vyakaran →
+        </Link>
+      </div>
+
+      <button
+        type="button"
+        onClick={onContinue}
+        className="mt-6 w-full rounded-full bg-marigold px-6 py-3.5 text-base font-semibold text-on-accent"
+      >
+        Got it
+      </button>
     </div>
   );
 }

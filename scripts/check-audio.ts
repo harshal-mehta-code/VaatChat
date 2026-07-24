@@ -20,6 +20,7 @@ import { VOWELS, CONSONANTS, barakshariGrid } from "../lib/content/akshar.ts";
 import { SCENARIOS } from "../lib/content/scenarios.ts";
 import { barakshariAudioPath } from "../lib/content/audio-paths.ts";
 import { GRAMMAR_MODULES } from "../lib/content/grammar.ts";
+import { GRAMMAR_TIPS } from "../lib/content/tips.ts";
 
 interface Ref {
   audio: string;
@@ -50,6 +51,8 @@ function collectRefs(): Ref[] {
       for (const ex of concept.discovery.examples) add(ex.audio, `grammar: ${ex.roman}`);
     }
   }
+  // Tips reuse grammar-example clips by literal path — verify they really resolve.
+  for (const t of GRAMMAR_TIPS) add(t.example.audio, `tip: ${t.id}`);
   return refs;
 }
 
