@@ -25,7 +25,7 @@ export default function AksharLabPage() {
 
   if (practicing) {
     return (
-      <div className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-4 py-6">
+      <div className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-4 py-6 pb-24">
         <AksharPractice pool={ALL_LETTERS} onExit={() => setPracticing(false)} />
       </div>
     );

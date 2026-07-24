@@ -1,12 +1,15 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────
-// React binding over the portable progress store. Screens use this hook; the
-// core stays framework-agnostic. State is hydrated from localStorage on mount
-// and persisted on every change.
+// React binding over the portable progress store.
+//
+// Backed by a single context Provider (mounted in app/layout.tsx) so every
+// surface — the page *and* the persistent bottom tab bar — reads and writes one
+// shared state. Screens call useProgress() exactly as before. The core stays
+// framework-agnostic; this is the only stateful glue.
 // ─────────────────────────────────────────────────────────────────────────
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   type Progress,
   freshProgress,
@@ -22,7 +25,20 @@ import {
 } from "../core/progress";
 import type { Grade3 } from "../core/srs";
 
-export function useProgress() {
+export interface ProgressApi {
+  progress: Progress;
+  hydrated: boolean;
+  gradeItem: (itemId: string, grade: Grade3) => void;
+  completeLesson: (lessonId: string) => void;
+  completeScenario: (scenarioId: string) => void;
+  markAkshar: (aksharId: string) => void;
+  completeGrammar: (conceptId: string) => void;
+  finishOnboarding: (goal: string, motivation: string) => void;
+  award: (xp: number) => void;
+  setProgress: (next: Progress) => void;
+}
+
+function useProgressState(): ProgressApi {
   const [progress, setProgress] = useState<Progress>(freshProgress);
   const [hydrated, setHydrated] = useState(false);
 
@@ -84,4 +100,20 @@ export function useProgress() {
     award,
     setProgress: update,
   };
+}
+
+const ProgressContext = createContext<ProgressApi | null>(null);
+
+export function ProgressProvider({ children }: { children: React.ReactNode }) {
+  const api = useProgressState();
+  return <ProgressContext.Provider value={api}>{children}</ProgressContext.Provider>;
+}
+
+/** Access the shared learner progress. Must be inside <ProgressProvider>. */
+export function useProgress(): ProgressApi {
+  const ctx = useContext(ProgressContext);
+  if (!ctx) {
+    throw new Error("useProgress must be used within <ProgressProvider> (see app/layout.tsx)");
+  }
+  return ctx;
 }

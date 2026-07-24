@@ -3,20 +3,19 @@
 import Link from "next/link";
 import { useProgress } from "@/lib/client/useProgress";
 import { getLevel, dueItemIds } from "@/lib/core/progress";
-import { UNITS, REWARDS } from "@/lib/content";
-import type { Lesson } from "@/lib/core/types";
+import {
+  nextLesson as computeNextLesson,
+  lessonUnlocked,
+  unitComplete,
+  unitUnlocked,
+} from "@/lib/core/progression";
+import { UNITS } from "@/lib/content";
 import Onboarding from "@/components/Onboarding";
 import TopBar from "@/components/TopBar";
 import LevelBar from "@/components/LevelBar";
 import { ACCENT_BG, ACCENT_TEXT, ACCENT_SOFT_BG } from "@/components/accent";
 
 const ORDERED_UNITS = [...UNITS].sort((a, b) => a.order - b.order);
-
-function Eyebrow({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">{children}</h2>
-  );
-}
 
 export default function Home() {
   const { progress, hydrated, finishOnboarding } = useProgress();
@@ -35,21 +34,14 @@ export default function Home() {
 
   const level = getLevel(progress);
   const dueCount = dueItemIds(progress).length;
-
-  // The single next action: first not-yet-completed lesson across the path.
-  const allLessons: Lesson[] = ORDERED_UNITS.flatMap((u) => u.lessons);
-  const nextLesson = allLessons.find((l) => !progress.completedLessons.includes(l.id));
-  const finishedAll = !nextLesson;
-
-  const ctaHref = nextLesson ? `/lesson/${nextLesson.id}` : "/akshar";
-  const ctaKicker = finishedAll ? "You've finished the path — keep it sharp" : "Continue learning";
-  const ctaLabel = finishedAll ? "Practice the script" : nextLesson!.title;
+  const nextLsn = computeNextLesson(ORDERED_UNITS, progress);
+  const finishedAll = !nextLsn;
 
   return (
-    <div className="mx-auto flex w-full max-w-[480px] flex-col gap-7 px-4 py-6 pb-16">
+    <div className="mx-auto flex w-full max-w-[480px] flex-col gap-7 px-4 py-6 pb-24">
       <TopBar progress={progress} />
 
-      {/* ── HERO: goal, level, and the one clear primary action ── */}
+      {/* ── HERO: goal, level, and the one clear next action ── */}
       <section className="overflow-hidden rounded-3xl border border-line bg-surface shadow-[var(--shadow)]">
         <div className="bg-marigold/10 px-5 pb-5 pt-4">
           <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-marigold">
@@ -65,50 +57,90 @@ export default function Home() {
 
         <div className="p-3">
           <Link
-            href={ctaHref}
+            href={finishedAll ? "/review" : `/lesson/${nextLsn!.id}`}
             className="flex items-center justify-between gap-3 rounded-2xl bg-marigold px-5 py-4 text-on-accent shadow-[var(--shadow)] transition-transform active:scale-[.99]"
           >
             <span className="flex flex-col text-left">
               <span className="text-[11px] font-medium uppercase tracking-wide opacity-80">
-                {ctaKicker}
+                {finishedAll ? "You've finished the path — keep it sharp" : "Continue learning"}
               </span>
-              <span className="text-lg font-semibold">{ctaLabel}</span>
+              <span className="text-lg font-semibold">
+                {finishedAll ? "Review your words" : nextLsn!.title}
+              </span>
             </span>
             <span className="text-2xl" aria-hidden="true">
               {finishedAll ? "✨" : "▶"}
             </span>
           </Link>
           {dueCount > 0 && (
-            <p className="px-2 pt-2 text-center text-xs text-ink-soft">
-              🔁 {dueCount} word{dueCount === 1 ? "" : "s"} ready for review — revisit a lesson to refresh them.
-            </p>
+            <Link
+              href="/review"
+              className="mt-2 block px-2 text-center text-xs text-ink-soft underline-offset-2 hover:underline"
+            >
+              🔁 {dueCount} word{dueCount === 1 ? "" : "s"} ready for review
+            </Link>
           )}
         </div>
       </section>
 
-      {/* ── PATH: units with clearly-tappable lesson rows ── */}
+      {/* ── PATH: current unit expanded; the rest collapsed (progressive disclosure) ── */}
       <section className="flex flex-col gap-3">
-        <Eyebrow>Your path</Eyebrow>
-        {ORDERED_UNITS.map((unit) => (
-          <div key={unit.id} className="overflow-hidden rounded-2xl border border-line bg-surface shadow-[var(--shadow)]">
-            <div className={`flex items-center gap-3 px-4 py-3 ${ACCENT_SOFT_BG[unit.accent]}`}>
-              <div>
-                <div className={`guj text-base font-semibold ${ACCENT_TEXT[unit.accent]}`}>
-                  {unit.gujaratiTitle}
-                </div>
-                <div className="text-sm font-semibold text-ink">{unit.title}</div>
+        <h2 className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">
+          Your path
+        </h2>
+        {ORDERED_UNITS.map((unit) => {
+          const complete = unitComplete(progress, unit);
+          const unlocked = unitUnlocked(ORDERED_UNITS, progress, unit.id);
+          const isCurrent = unlocked && !complete;
+
+          // Collapsed: a completed unit (done) or a locked future unit.
+          if (!isCurrent) {
+            return (
+              <div
+                key={unit.id}
+                className={`flex items-center gap-3 rounded-2xl border border-line px-4 py-3 ${
+                  complete ? "bg-surface" : "bg-surface-2"
+                }`}
+              >
+                <span
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm ${
+                    complete ? `${ACCENT_BG[unit.accent]} text-on-accent` : "border border-line text-ink-soft"
+                  }`}
+                  aria-hidden="true"
+                >
+                  {complete ? "✓" : "🔒"}
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-sm font-medium text-ink">{unit.title}</span>
+                  <span className="text-xs text-ink-soft">
+                    {complete ? "Complete" : "Unlocks as you progress"}
+                  </span>
+                </span>
               </div>
-            </div>
-            <ul>
-              {unit.lessons.map((lesson, i) => {
-                const done = progress.completedLessons.includes(lesson.id);
-                const isNext = nextLesson?.id === lesson.id;
-                return (
-                  <li key={lesson.id} className="border-t border-line first:border-t-0">
-                    <Link
-                      href={`/lesson/${lesson.id}`}
-                      className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-surface-2 active:bg-surface-2"
-                    >
+            );
+          }
+
+          // Expanded: the one active unit.
+          return (
+            <div
+              key={unit.id}
+              className="overflow-hidden rounded-2xl border border-line bg-surface shadow-[var(--shadow)]"
+            >
+              <div className={`flex items-center gap-3 px-4 py-3 ${ACCENT_SOFT_BG[unit.accent]}`}>
+                <div>
+                  <div className={`guj text-base font-semibold ${ACCENT_TEXT[unit.accent]}`}>
+                    {unit.gujaratiTitle}
+                  </div>
+                  <div className="text-sm font-semibold text-ink">{unit.title}</div>
+                </div>
+              </div>
+              <ul>
+                {unit.lessons.map((lesson, i) => {
+                  const done = progress.completedLessons.includes(lesson.id);
+                  const isNext = nextLsn?.id === lesson.id;
+                  const open = done || lessonUnlocked(ORDERED_UNITS, progress, lesson.id);
+                  const rowInner = (
+                    <>
                       <span
                         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
                           done
@@ -119,113 +151,40 @@ export default function Home() {
                         }`}
                         aria-hidden="true"
                       >
-                        {done ? "✓" : i + 1}
+                        {done ? "✓" : open ? i + 1 : "🔒"}
                       </span>
                       <span className="flex min-w-0 flex-1 flex-col">
                         <span className="truncate text-sm font-medium text-ink">{lesson.title}</span>
                         <span className="text-xs text-ink-soft">
-                          {done ? "Completed · tap to review" : isNext ? "Up next" : "Not started"}
+                          {done ? "Completed · tap to review" : isNext ? "Up next" : open ? "Ready" : "Locked"}
                         </span>
                       </span>
-                      <span className="text-ink-soft" aria-hidden="true">
-                        ›
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
-      </section>
-
-      {/* ── PRACTICE & PLAY: distinct navigation tiles ── */}
-      <section className="flex flex-col gap-3">
-        <Eyebrow>Practice &amp; play</Eyebrow>
-        <div className="grid grid-cols-1 gap-3">
-          <Link
-            href="/akshar"
-            className="flex items-center gap-4 rounded-2xl border border-peacock/40 bg-peacock/10 p-4 transition-colors hover:bg-peacock/15 active:scale-[.99]"
-          >
-            <span className="text-3xl" aria-hidden="true">
-              📝
-            </span>
-            <span className="flex flex-1 flex-col">
-              <span className="flex items-baseline gap-2">
-                <span className="guj text-base font-semibold text-ink">અક્ષર</span>
-                <span className="text-sm font-semibold text-ink">Akshar Lab</span>
-              </span>
-              <span className="text-xs text-ink-soft">Learn &amp; practice the script</span>
-            </span>
-            <span className="text-xl text-peacock" aria-hidden="true">
-              ›
-            </span>
-          </Link>
-          <Link
-            href="/vyakaran"
-            className="flex items-center gap-4 rounded-2xl border border-marigold/40 bg-marigold/10 p-4 transition-colors hover:bg-marigold/15 active:scale-[.99]"
-          >
-            <span className="text-3xl" aria-hidden="true">
-              🧩
-            </span>
-            <span className="flex flex-1 flex-col">
-              <span className="flex items-baseline gap-2">
-                <span className="guj text-base font-semibold text-ink">વ્યાકરણ</span>
-                <span className="text-sm font-semibold text-ink">Vyakaran</span>
-              </span>
-              <span className="text-xs text-ink-soft">Learn the grammar properly</span>
-            </span>
-            <span className="text-xl text-marigold" aria-hidden="true">
-              ›
-            </span>
-          </Link>
-          <Link
-            href="/vaat"
-            className="flex items-center gap-4 rounded-2xl border border-magenta/40 bg-magenta/10 p-4 transition-colors hover:bg-magenta/15 active:scale-[.99]"
-          >
-            <span className="text-3xl" aria-hidden="true">
-              💬
-            </span>
-            <span className="flex flex-1 flex-col">
-              <span className="flex items-baseline gap-2">
-                <span className="guj text-base font-semibold text-ink">વાત</span>
-                <span className="text-sm font-semibold text-ink">Vaat Mode</span>
-              </span>
-              <span className="text-xs text-ink-soft">Have a real conversation</span>
-            </span>
-            <span className="text-xl text-magenta" aria-hidden="true">
-              ›
-            </span>
-          </Link>
-        </div>
-      </section>
-
-      {/* ── REWARDS: quiet, clearly non-interactive shelf ── */}
-      <section className="flex flex-col gap-3">
-        <Eyebrow>Rewards</Eyebrow>
-        <div className="flex gap-3 overflow-x-auto pb-1">
-          {REWARDS.map((reward) => {
-            const unlocked = progress.xp >= reward.xpNeeded;
-            return (
-              <div
-                key={reward.id}
-                className={`flex w-24 shrink-0 flex-col items-center gap-1 rounded-2xl border p-3 text-center ${
-                  unlocked ? "border-marigold/50 bg-marigold/10" : "border-line bg-surface-2"
-                }`}
-              >
-                <span className={`text-2xl ${unlocked ? "" : "opacity-40 grayscale"}`} aria-hidden="true">
-                  {reward.emoji}
-                </span>
-                <span className={`text-[11px] font-semibold leading-tight ${unlocked ? "text-ink" : "text-ink-soft"}`}>
-                  {reward.title}
-                </span>
-                <span className="text-[10px] leading-tight text-ink-soft">
-                  {unlocked ? "Unlocked" : `${reward.xpNeeded} XP`}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+                      {open && (
+                        <span className="text-ink-soft" aria-hidden="true">
+                          ›
+                        </span>
+                      )}
+                    </>
+                  );
+                  return (
+                    <li key={lesson.id} className="border-t border-line first:border-t-0">
+                      {open ? (
+                        <Link
+                          href={`/lesson/${lesson.id}`}
+                          className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-surface-2 active:bg-surface-2"
+                        >
+                          {rowInner}
+                        </Link>
+                      ) : (
+                        <div className="flex items-center gap-3 px-4 py-3.5 opacity-55">{rowInner}</div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
       </section>
     </div>
   );

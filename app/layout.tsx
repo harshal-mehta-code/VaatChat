@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { ProgressProvider } from "@/lib/client/useProgress";
+import TabBar from "@/components/TabBar";
 
 export const metadata: Metadata = {
   title: "VaatChat — Learn Gujarati",
@@ -20,7 +22,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <ProgressProvider>
+          {children}
+          <TabBar />
+        </ProgressProvider>
+      </body>
     </html>
   );
 }
