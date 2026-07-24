@@ -29,27 +29,6 @@ export function pathLength(pts: Pt[]): number {
   return total;
 }
 
-export interface Box {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-export function bbox(strokes: Pt[][]): Box {
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const s of strokes) {
-    for (const [x, y] of s) {
-      if (x < minX) minX = x;
-      if (y < minY) minY = y;
-      if (x > maxX) maxX = x;
-      if (y > maxY) maxY = y;
-    }
-  }
-  if (!Number.isFinite(minX)) return { x: 0, y: 0, w: 0, h: 0 };
-  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
-}
-
 /** Resample a polyline to exactly `n` points, equally spaced by arc length. */
 export function resample(pts: Pt[], n: number = SAMPLES): Pt[] {
   if (pts.length === 0) return [];
@@ -264,28 +243,69 @@ export interface GlyphScore {
   codes: FeedbackCode[];
 }
 
+interface Frame {
+  cx: number;
+  cy: number;
+  /** RMS distance of points from the centroid — a robust "how big is it". */
+  r: number;
+}
+
 /**
- * Align a set of strokes onto a target bounding box (uniform scale about the
- * centre). Used in copy/memory mode so that writing the correct letter a bit
- * small, or off to one side, isn't punished — only the *shape* is judged.
+ * Where a set of strokes sits and how big it is.
+ *
+ * Deliberately centroid + RMS radius rather than a bounding box: a box is
+ * defined by its four most extreme points, so one stroke that overshoots by a
+ * centimetre redefines the whole letter's "size". The RMS radius is an average
+ * over every point, so a single wayward stroke nudges it instead of hijacking it.
  */
-function alignTo(strokes: Pt[][], target: Box): Pt[][] {
-  const src = bbox(strokes);
-  if (src.w === 0 && src.h === 0) return strokes;
-  // Uniform scale keeps the letter's proportions honest (no stretching a bad
-  // shape into a good one).
-  const scale = Math.min(
-    src.w > 0 ? target.w / src.w : Infinity,
-    src.h > 0 ? target.h / src.h : Infinity,
-  );
-  const k = Number.isFinite(scale) && scale > 0 ? scale : 1;
-  const scx = src.x + src.w / 2;
-  const scy = src.y + src.h / 2;
-  const tcx = target.x + target.w / 2;
-  const tcy = target.y + target.h / 2;
+function frameOf(strokes: Pt[][]): Frame {
+  // Resample at a fixed spatial interval first. The stored reference is
+  // simplified — dense through curves, two points across a long straight — while
+  // captured ink is uniformly dense. Averaging raw points would put the two
+  // centroids in different places for the very same shape.
+  const pts = strokes.flatMap((s) => {
+    if (s.length < 2) return s;
+    const n = Math.max(2, Math.round(pathLength(s) / 10));
+    return resample(s, n);
+  });
+  if (pts.length === 0) return { cx: 0, cy: 0, r: 1 };
+  let sx = 0, sy = 0;
+  for (const [x, y] of pts) {
+    sx += x;
+    sy += y;
+  }
+  const cx = sx / pts.length;
+  const cy = sy / pts.length;
+  let sq = 0;
+  for (const [x, y] of pts) sq += (x - cx) ** 2 + (y - cy) ** 2;
+  const r = Math.sqrt(sq / pts.length);
+  return { cx, cy, r: r > 1 ? r : 1 };
+}
+
+/**
+ * Move a set of strokes into another frame: same centre, same overall size.
+ *
+ * This is what makes "the right letter, written a bit small and a bit to the
+ * left" score as what it is — correct. Only translation and *uniform* scale are
+ * removed; rotation and proportion are left alone, because a letter written
+ * sideways or stretched really is wrong.
+ */
+function reframe(strokes: Pt[][], from: Frame, to: Frame): Pt[][] {
+  const k = to.r / from.r;
   return strokes.map((s) =>
-    s.map(([x, y]) => [tcx + (x - scx) * k, tcy + (y - scy) * k] as Pt),
+    s.map(([x, y]) => [to.cx + (x - from.cx) * k, to.cy + (y - from.cy) * k] as Pt),
   );
+}
+
+/**
+ * How well the raw attempt sat on the page, 0–1 — size and position only.
+ * Matters a little when tracing over a visible guide, not at all when writing
+ * from memory into an empty box.
+ */
+function placementScore(user: Frame, ref: Frame): number {
+  const offset = Math.hypot(user.cx - ref.cx, user.cy - ref.cy) / ref.r;
+  const sizeErr = Math.abs(Math.log(user.r / ref.r));
+  return clamp01(1 - offset / 0.6) * clamp01(1 - sizeErr / 0.55);
 }
 
 function starsFor(score: number): 0 | 1 | 2 | 3 {
@@ -310,7 +330,14 @@ export function scoreGlyph(
 ): GlyphScore {
   const tol = TOLERANCE[mode];
   const ref = reference.map((s) => s.points);
-  const user = mode === "trace" ? drawn : alignTo(drawn, bbox(ref));
+
+  // Judge the *shape* in a common frame, always — in every mode. Whether the
+  // letter came out a little small or a little left of centre is a separate
+  // question from whether it's the right letter, and conflating the two is how
+  // a correct attempt gets marked wrong.
+  const refFrame = frameOf(ref);
+  const userFrame = frameOf(drawn);
+  const user = drawn.length > 0 ? reframe(drawn, userFrame, refFrame) : drawn;
 
   const codes: FeedbackCode[] = [];
   const missing = Math.max(0, ref.length - user.length);
@@ -354,6 +381,11 @@ export function scoreGlyph(
   if (!orderOk) score -= 8;
   score -= missing * 12;
   score -= extra * 6;
+  // Tracing over a visible guide, staying on it counts for a little. Writing
+  // from memory into an empty box, where the letter sits is not an error at all.
+  if (mode === "trace" && drawn.length > 0) {
+    score *= 0.9 + 0.1 * placementScore(userFrame, refFrame);
+  }
   score = Math.max(0, Math.min(100, Math.round(score)));
 
   // Stars are the learner-facing verdict, so they answer "did I write it the

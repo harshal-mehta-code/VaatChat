@@ -32,9 +32,19 @@ interface Props {
   ghostChar: string;
   onDone: (score: GlyphScore) => void;
   onWatchAgain?: () => void;
+  /** What tapping through leads to — named explicitly, so moving from Trace to
+   *  Write reads as the next rung and never as "your attempt was rejected". */
+  continueLabel: string;
 }
 
-export default function WritePad({ glyph, mode, ghostChar, onDone, onWatchAgain }: Props) {
+export default function WritePad({
+  glyph,
+  mode,
+  ghostChar,
+  onDone,
+  onWatchAgain,
+  continueLabel,
+}: Props) {
   const [strokes, setStrokes] = useState<Pt[][]>([]);
   const [live, setLive] = useState<Pt[]>([]);
   const [drawing, setDrawing] = useState(false);
@@ -195,7 +205,13 @@ export default function WritePad({ glyph, mode, ghostChar, onDone, onWatchAgain 
       </div>
 
       {result ? (
-        <Feedback score={result} onRetry={retry} onDone={() => onDone(result)} onWatchAgain={onWatchAgain} />
+        <Feedback
+          score={result}
+          onRetry={retry}
+          onDone={() => onDone(result)}
+          onWatchAgain={onWatchAgain}
+          continueLabel={continueLabel}
+        />
       ) : (
         <div className="flex w-full max-w-[560px] items-center gap-2">
           <button
@@ -235,11 +251,13 @@ function Feedback({
   onRetry,
   onDone,
   onWatchAgain,
+  continueLabel,
 }: {
   score: GlyphScore;
   onRetry: () => void;
   onDone: () => void;
   onWatchAgain?: () => void;
+  continueLabel: string;
 }) {
   const codes: FeedbackCode[] = [];
   for (const c of score.codes) if (!codes.includes(c)) codes.push(c);
@@ -299,7 +317,7 @@ function Feedback({
           onClick={onDone}
           className="flex-1 rounded-full bg-marigold px-6 py-3 text-base font-semibold text-on-accent active:scale-[.99]"
         >
-          Continue
+          {continueLabel}
         </button>
       </div>
     </div>

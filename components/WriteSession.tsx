@@ -216,6 +216,13 @@ export default function WriteSession({
             mode={stage === "trace" ? "trace" : "memory"}
             ghostChar={akshar.char}
             onDone={advance}
+            continueLabel={
+              stage === "trace"
+                ? "Now write it from memory →"
+                : index + 1 >= session.length
+                  ? "Finish"
+                  : "Next letter →"
+            }
             onWatchAgain={() => setStageOverride("watch")}
           />
         </div>
