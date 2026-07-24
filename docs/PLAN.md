@@ -105,6 +105,8 @@ Each **unit** blends five strands so no single strand gets boring:
 The abugida (14 vowels/swar, 34 consonants/vyanjan, plus matras/diacritics) is the biggest wall. We turn it into the most delightful part of the app:
 - **Shape→sound mnemonics.** Each letter gets a memorable image tied to its sound (dual coding).
 - **Stroke-order tracing** with satisfying haptics and a "written it right" animation.
+  Plus **typing** (the phonetic-keyboard skill) — the two halves of literacy the
+  script track was missing. Full design in [`docs/LEKHAN.md`](./LEKHAN.md).
 - **Barakshari game** — the consonant × vowel grid (ક કા કિ કી…) that Gujarati kids drill, reimagined as a fast, musical matching game. This is the single highest-leverage literacy tool and almost no app does it well.
 - **Fading transliteration.** Romanized crutches shrink and disappear as the learner's recognition accuracy for each character crosses a mastery threshold — literacy sneaks up on them.
 
