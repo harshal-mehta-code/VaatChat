@@ -30,6 +30,8 @@ export interface CloudSync {
   lastSyncedAt: Date | null;
   error: string | null;
   sendMagicLink: (email: string) => Promise<{ ok: boolean; message: string }>;
+  /** Finish sign-in with the code from the email — works on any device. */
+  verifyCode: (email: string, code: string) => Promise<{ ok: boolean; message: string }>;
   signOut: () => Promise<void>;
   syncNow: () => Promise<void>;
 }
@@ -153,6 +155,34 @@ export function useCloudSync(
     return { ok: true, message: `Check ${address} for a sign-in link.` };
   }, []);
 
+  /**
+   * Sign in with the code from the email rather than the link.
+   *
+   * The link uses PKCE: requesting it stashes a secret verifier in *this*
+   * browser, and only that browser can complete the exchange. Which is fine
+   * when you open the mail on the same device and useless when you don't —
+   * and "get my progress onto my other device" is the entire point of signing
+   * in. A code carries no verifier, so it works anywhere.
+   *
+   * Which OTP type applies depends on whether the address is new to us
+   * (`signup`) or returning (`magiclink`), and that's not knowable from here,
+   * so try the plausible ones and keep the first that takes.
+   */
+  const verifyCode = useCallback(async (address: string, code: string) => {
+    const supabase = getSupabase();
+    if (!supabase) return { ok: false, message: "Cloud sync isn't configured for this build." };
+    const token = code.replace(/\D/g, "");
+    if (!token) return { ok: false, message: "Enter the 6-digit code from the email." };
+
+    let lastMessage = "That code didn't work. It may have expired — send a new one.";
+    for (const type of ["email", "magiclink", "signup"] as const) {
+      const { error: err } = await supabase.auth.verifyOtp({ email: address, token, type });
+      if (!err) return { ok: true, message: "Signed in — pulling your progress…" };
+      lastMessage = err.message;
+    }
+    return { ok: false, message: lastMessage };
+  }, []);
+
   const signOut = useCallback(async () => {
     const supabase = getSupabase();
     if (!supabase) return;
@@ -160,5 +190,14 @@ export function useCloudSync(
     await supabase.auth.signOut();
   }, []);
 
-  return { status, email, lastSyncedAt, error, sendMagicLink, signOut, syncNow: reconcile };
+  return {
+    status,
+    email,
+    lastSyncedAt,
+    error,
+    sendMagicLink,
+    verifyCode,
+    signOut,
+    syncNow: reconcile,
+  };
 }

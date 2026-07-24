@@ -10,7 +10,7 @@
 // Magic link rather than a password, because a password is one more thing to
 // forget in an app whose whole point is not making you feel bad.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useProgress } from "@/lib/client/useProgress";
 import { masteredCount } from "@/lib/core/progress";
@@ -20,13 +20,44 @@ export default function AccountPage() {
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<{ ok: boolean; message: string } | null>(null);
+  const [code, setCode] = useState("");
+  const [sent, setSent] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+
+  // A failed link exchange comes back as ?error=... or #error=... and otherwise
+  // just dumps you on the sign-in form with no explanation of why.
+  useEffect(() => {
+    const from = (s: string) => new URLSearchParams(s.replace(/^[?#]/, ""));
+    const params = from(window.location.search);
+    const hash = from(window.location.hash);
+    const description = params.get("error_description") ?? hash.get("error_description");
+    const code_ = params.get("error") ?? hash.get("error");
+    if (description || code_) {
+      setNotice({
+        ok: false,
+        message: `${description ?? code_}. If you opened the link on a different device from the one you asked from, use the code instead.`,
+      });
+      setSent(true);
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim() || sending) return;
     setSending(true);
-    setNotice(await sync.sendMagicLink(email.trim()));
+    const result = await sync.sendMagicLink(email.trim());
+    setNotice(result);
+    if (result.ok) setSent(true);
     setSending(false);
+  }
+
+  async function submitCode(e: React.FormEvent) {
+    e.preventDefault();
+    if (!code.trim() || verifying) return;
+    setVerifying(true);
+    setNotice(await sync.verifyCode(email.trim(), code));
+    setVerifying(false);
   }
 
   if (!hydrated) return null;
@@ -126,6 +157,33 @@ export default function AccountPage() {
               <p className={`mt-2 text-sm ${notice.ok ? "text-good" : "text-bad"}`}>
                 {notice.message}
               </p>
+            )}
+
+            {sent && (
+              <div className="mt-4 border-t border-line pt-4">
+                <p className="text-sm text-ink">
+                  Signing in on a <span className="font-semibold">different device</span> from the
+                  one you asked on? The link won&apos;t work there — enter the 6-digit code from the
+                  same email instead.
+                </p>
+                <form onSubmit={submitCode} className="mt-2 flex gap-2">
+                  <input
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    placeholder="123456"
+                    className="w-32 rounded-xl border border-line bg-surface-2 px-4 py-3 text-center text-base tracking-[0.3em] text-ink"
+                  />
+                  <button
+                    type="submit"
+                    disabled={verifying}
+                    className="flex-1 rounded-full border border-line bg-surface px-4 py-3 text-sm font-semibold text-ink disabled:opacity-50"
+                  >
+                    {verifying ? "Checking…" : "Sign in with code"}
+                  </button>
+                </form>
+              </div>
             )}
           </div>
           <p className="text-xs text-ink-soft">

@@ -56,12 +56,31 @@ sender as development-only.
 
 **Trigger to act: before the first person outside the household signs in.**
 
-### 2. Free Supabase projects pause after ~7 days idle
+### 2. Magic links only work on the device that asked for them
+
+Supabase's JS client defaults to **PKCE**: requesting a link stashes a secret
+code verifier in that browser, and only that browser can complete the exchange.
+Ask from your phone, open the mail on your laptop, and the exchange fails —
+silently, dropping you back on the sign-in form.
+
+Which is precisely backwards for a feature whose purpose is getting your
+progress onto a second device.
+
+- **Fix shipped:** the sign-in form also accepts the **6-digit code** from the
+  same email (`verifyOtp`), which carries no verifier and works anywhere. The
+  link stays for the same-device case, where it's one tap.
+- **Requires a dashboard step:** the default Magic Link email template only
+  renders `{{ .ConfirmationURL }}`. Add `{{ .Token }}` under
+  **Authentication → Email Templates → Magic Link** or there is no code to type.
+- Auth errors arriving as `?error=` / `#error=` are now surfaced on the account
+  page instead of vanishing.
+
+### 3. Free Supabase projects pause after ~7 days idle
 
 Needs a click in the dashboard to wake. Harmless during quiet development,
 invisible once anyone uses the app daily. Not worth engineering around.
 
-### 3. Redirect URLs must be allow-listed
+### 4. Redirect URLs must be allow-listed
 
 Magic links bounce unless Supabase knows the URLs you sign in from. Under
 **Authentication → URL Configuration**: set **Site URL** to production, and add
@@ -110,6 +129,8 @@ removes the main reason we'd originally written down for going native.
 Roughly in order of when they start to matter.
 
 **Before the first outside tester**
+- [ ] `{{ .Token }}` in the Magic Link email template, or cross-device sign-in
+      has no fallback when the link fails
 - [ ] Custom SMTP (Resend) so sign-in emails actually arrive, and come from us
 - [ ] Redirect URLs + Site URL configured for production and previews
 - [ ] Confirm the free-tier numbers above still hold
