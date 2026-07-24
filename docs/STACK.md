@@ -47,14 +47,27 @@ sender as development-only.
   A tester has no idea why and will not try twice.
 - **Threshold:** invisible for one or two people. Breaks the moment you invite a
   handful of testers on the same evening.
-- **Fix:** custom SMTP. **Resend** free tier (~3,000/month, ~100/day last we
-  looked) covers this many times over. Roughly 20 minutes: provision, then set
-  SMTP host/user/pass under Supabase → Project Settings → Auth → SMTP.
+- **Fix:** custom SMTP, under Supabase → Project Settings → Authentication →
+  SMTP Settings. Two routes:
+  - **Gmail app password** — no domain required, works in a few minutes, sends
+    to anyone, ~500/day. `smtp.gmail.com` / port `587` / your Gmail address /
+    an [app password](https://myaccount.google.com/apppasswords) (needs 2FA on
+    the Google account). Right answer while this is a private app.
+  - **Resend** (or similar) — needs a domain you can add DNS records to, so
+    *not* `*.vercel.app`. Right answer once emails should come from VaatChat
+    rather than from a person.
+  Either one also unlocks **email template editing**, which Supabase gates
+  behind custom SMTP — that's what enables the 6-digit code path.
 - **Do it anyway, eventually:** custom SMTP is also what makes the email say
   *VaatChat* instead of *Supabase*, which matters the first time a stranger gets
   one.
 
-**Trigger to act: before the first person outside the household signs in.**
+**Trigger to act: the moment anyone tries to test sync.** Originally filed as
+"before the first outside tester", which proved too late — two sends an hour is
+exhausted by a single person setting up two devices, and the raw error reads
+"email rate limit exceeded", which sounds like a broken app rather than a quota.
+The app now explains it and rate-limits its own send button, but that only
+softens it.
 
 ### 2. Magic links only work on the device that asked for them
 

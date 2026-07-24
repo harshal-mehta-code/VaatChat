@@ -22,7 +22,17 @@ export default function AccountPage() {
   const [notice, setNotice] = useState<{ ok: boolean; message: string } | null>(null);
   const [code, setCode] = useState("");
   const [showCode, setShowCode] = useState(false);
+  // Sends are a scarce resource on the built-in email service, so a stray
+  // double-tap costs a real one. Hold the button down for a minute after each.
+  const [cooldown, setCooldown] = useState(0);
+
   const [verifying, setVerifying] = useState(false);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((n) => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
 
   // A failed link exchange comes back as ?error=... or #error=... and otherwise
   // just dumps you on the sign-in form with no explanation of why.
@@ -46,8 +56,18 @@ export default function AccountPage() {
     if (!email.trim() || sending) return;
     setSending(true);
     const result = await sync.sendMagicLink(email.trim());
-    setNotice(result);
-
+    // The raw message for this one is "email rate limit exceeded", which sounds
+    // like the app is broken rather than a free-tier quota that resets shortly.
+    setNotice(
+      /rate limit/i.test(result.message)
+        ? {
+            ok: false,
+            message:
+              "The built-in email sender only allows a couple of messages an hour, and they've been used. It resets within the hour — or set up custom SMTP to remove the cap for good (see docs/STACK.md).",
+          }
+        : result,
+    );
+    if (result.ok) setCooldown(60);
     setSending(false);
   }
 
@@ -151,10 +171,14 @@ export default function AccountPage() {
               />
               <button
                 type="submit"
-                disabled={sending}
+                disabled={sending || cooldown > 0}
                 className="w-full rounded-full bg-marigold px-6 py-3 text-base font-semibold text-on-accent disabled:opacity-50 active:scale-[.99]"
               >
-                {sending ? "Sending…" : "Email me a sign-in link"}
+                {sending
+                  ? "Sending…"
+                  : cooldown > 0
+                    ? `Link sent — check your email (${cooldown}s)`
+                    : "Email me a sign-in link"}
               </button>
             </form>
             {notice && (
