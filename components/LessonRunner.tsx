@@ -130,6 +130,8 @@ interface ExerciseViewProps {
 
 function ExerciseView({ exercise, item, distractors, onAdvance }: ExerciseViewProps) {
   switch (exercise.kind) {
+    case "predict":
+      return <PredictExercise exercise={exercise} item={item} distractors={distractors} onAdvance={onAdvance} />;
     case "recall":
       return <RecallExercise exercise={exercise} item={item} distractors={distractors} onAdvance={onAdvance} />;
     case "listen":
@@ -173,6 +175,106 @@ function IntroExercise({ item, onAdvance }: { item: LexItem; onAdvance: (grade: 
       >
         Got it
       </button>
+    </div>
+  );
+}
+
+/**
+ * Predict-then-reveal: the learner commits a guess at the meaning *before*
+ * seeing it. Even a wrong guess opens an information gap and primes memory
+ * (pretesting / generation effect), so the reveal lands harder than a passive
+ * first look — the same beat the Vyakaran hooks use, brought to vocab.
+ *
+ * Deliberately NOT SRS-graded: this is first exposure, so a "wrong" answer is
+ * expected and grading it would poison the item's schedule before it's taught.
+ */
+function PredictExercise({
+  exercise,
+  item,
+  distractors,
+  onAdvance,
+}: {
+  exercise: Exercise;
+  item: LexItem;
+  distractors: LexItem[];
+  onAdvance: (grade: Grade3 | null) => void;
+}) {
+  const options = seededShuffle([item, ...distractors], exercise.id);
+  const [guess, setGuess] = useState<string | null>(null);
+  const answered = guess !== null;
+  const gotIt = guess === item.english;
+
+  useEffect(() => {
+    void playAudio(item.audio, item.gujarati);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="flex flex-1 flex-col">
+      <div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-marigold">
+        <span aria-hidden="true">💭</span> Take a guess
+      </div>
+
+      <div className="mb-5 flex items-center gap-3 rounded-2xl border border-line bg-surface p-5 shadow-[var(--shadow)]">
+        <AudioButton src={item.audio} gujarati={item.gujarati} size="sm" />
+        <div>
+          <div className="guj text-2xl font-medium text-ink">{item.gujarati}</div>
+          <div className="text-sm text-ink-soft">{item.roman}</div>
+        </div>
+      </div>
+
+      <p className="mb-3 text-sm text-ink-soft">
+        New word — what do you think it means? A wrong guess helps you remember.
+      </p>
+
+      <div className="flex flex-col gap-2">
+        {options.map((opt) => {
+          const isThis = guess === opt.english;
+          const isRight = opt.english === item.english;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              disabled={answered}
+              onClick={() => setGuess(opt.english)}
+              className={`rounded-2xl border px-4 py-3.5 text-left text-sm font-medium transition-colors ${
+                answered && isRight
+                  ? "border-good bg-good/10 text-good"
+                  : answered && isThis
+                    ? "border-bad bg-bad/10 text-bad"
+                    : "border-line bg-surface text-ink hover:bg-surface-2"
+              }`}
+            >
+              {opt.english}
+            </button>
+          );
+        })}
+      </div>
+
+      {answered && (
+        <>
+          <div className="mt-5 rounded-2xl border border-marigold/40 bg-marigold/10 p-4 text-sm text-ink">
+            <span className="font-semibold">
+              {gotIt ? "Good instinct! " : "Good guess — "}
+            </span>
+            <span className="guj">{item.gujarati}</span> ({item.roman}) means{" "}
+            <span className="font-semibold">{item.english}</span>.
+            {item.literal && (
+              <div className="mt-1 text-xs italic text-ink-soft">
+                lit. &ldquo;{item.literal}&rdquo;
+              </div>
+            )}
+            {item.note && <div className="mt-1 text-xs text-ink-soft">💡 {item.note}</div>}
+          </div>
+          <button
+            type="button"
+            onClick={() => onAdvance(null)}
+            className="mt-6 w-full rounded-full bg-marigold px-6 py-3.5 text-base font-semibold text-on-accent"
+          >
+            Got it
+          </button>
+        </>
+      )}
     </div>
   );
 }

@@ -39,6 +39,9 @@ export interface LexItem {
 /**
  * Exercise kinds in the lesson loop. Each maps to a research pillar:
  *  - intro       → comprehensible input (hear + see, no pressure)
+ *  - predict     → pretest: guess the meaning *before* it's revealed. Even a
+ *                  wrong guess primes memory (pretesting / generation effect),
+ *                  so the reveal lands harder than a passive first look.
  *  - recall      → active recall (produce the meaning / the phrase)
  *  - listen      → listening comprehension (audio → pick meaning)
  *  - speak       → output practice (say it; self-compare or STT later)
@@ -47,6 +50,7 @@ export interface LexItem {
  */
 export type ExerciseKind =
   | "intro"
+  | "predict"
   | "recall"
   | "listen"
   | "speak"

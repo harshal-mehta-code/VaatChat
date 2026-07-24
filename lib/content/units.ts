@@ -127,10 +127,23 @@ function buildLesson(
   const pool = itemIds;
   const ex: Exercise[] = [];
 
-  // 1) Comprehensible input: meet every item gently.
-  for (const itemId of itemIds) {
-    ex.push({ id: `${id}-intro-${itemId}`, kind: "intro", itemId });
-  }
+  // 1) Meet every item. The first few open as a *predict* — guess the meaning
+  //    before it's revealed, which primes memory even when the guess is wrong
+  //    (pretesting effect). We cap it at the first 3 rather than every item so
+  //    a lesson opens with a curiosity beat instead of a wall of coin flips.
+  const PREDICT_COUNT = 3;
+  itemIds.forEach((itemId, i) => {
+    if (i < PREDICT_COUNT) {
+      ex.push({
+        id: `${id}-predict-${itemId}`,
+        kind: "predict",
+        itemId,
+        distractorIds: pickDistractors(itemId, pool),
+      });
+    } else {
+      ex.push({ id: `${id}-intro-${itemId}`, kind: "intro", itemId });
+    }
+  });
   // 2) Active recall: pick the meaning (with distractors).
   for (const itemId of itemIds) {
     ex.push({
