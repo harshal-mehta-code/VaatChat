@@ -21,7 +21,7 @@ export default function AccountPage() {
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<{ ok: boolean; message: string } | null>(null);
   const [code, setCode] = useState("");
-  const [sent, setSent] = useState(false);
+  const [showCode, setShowCode] = useState(false);
   const [verifying, setVerifying] = useState(false);
 
   // A failed link exchange comes back as ?error=... or #error=... and otherwise
@@ -35,9 +35,8 @@ export default function AccountPage() {
     if (description || code_) {
       setNotice({
         ok: false,
-        message: `${description ?? code_}. If you opened the link on a different device from the one you asked from, use the code instead.`,
+        message: `${description ?? code_}. If that link was requested on another device, ask for a fresh one right here instead — a link only works where it was requested.`,
       });
-      setSent(true);
       window.history.replaceState(null, "", window.location.pathname);
     }
   }, []);
@@ -48,7 +47,7 @@ export default function AccountPage() {
     setSending(true);
     const result = await sync.sendMagicLink(email.trim());
     setNotice(result);
-    if (result.ok) setSent(true);
+
     setSending(false);
   }
 
@@ -134,6 +133,11 @@ export default function AccountPage() {
               Practise on your phone, write on your iPad, and pick up where you left off. We send a
               link — no password to remember.
             </p>
+            <p className="mt-2 rounded-xl border border-peacock/40 bg-peacock/10 px-3 py-2 text-xs text-ink">
+              Ask for the link <span className="font-semibold">on the device you want to sign in
+              on</span>, and open the email there. A link only works on the device that requested
+              it — do this once per device and they all stay in step.
+            </p>
             <form onSubmit={submit} className="mt-3 flex flex-col gap-2">
               <input
                 type="email"
@@ -159,12 +163,22 @@ export default function AccountPage() {
               </p>
             )}
 
-            {sent && (
-              <div className="mt-4 border-t border-line pt-4">
-                <p className="text-sm text-ink">
-                  Signing in on a <span className="font-semibold">different device</span> from the
-                  one you asked on? The link won&apos;t work there — enter the 6-digit code from the
-                  same email instead.
+            {/* Only useful once the Magic Link email template includes
+                {{ .Token }}, which Supabase gates behind custom SMTP. Tucked
+                away rather than removed, so it's here the day that's set up. */}
+            <button
+              type="button"
+              onClick={() => setShowCode((v) => !v)}
+              className="mt-3 text-xs text-ink-soft underline underline-offset-2"
+            >
+              {showCode ? "Hide code entry" : "My email has a 6-digit code"}
+            </button>
+
+            {showCode && (
+              <div className="mt-3 border-t border-line pt-3">
+                <p className="text-xs text-ink-soft">
+                  If the email includes a code, it works from any device — no need to request a
+                  fresh link here.
                 </p>
                 <form onSubmit={submitCode} className="mt-2 flex gap-2">
                   <input

@@ -66,14 +66,27 @@ silently, dropping you back on the sign-in form.
 Which is precisely backwards for a feature whose purpose is getting your
 progress onto a second device.
 
-- **Fix shipped:** the sign-in form also accepts the **6-digit code** from the
-  same email (`verifyOtp`), which carries no verifier and works anywhere. The
-  link stays for the same-device case, where it's one tap.
-- **Requires a dashboard step:** the default Magic Link email template only
-  renders `{{ .ConfirmationURL }}`. Add `{{ .Token }}` under
-  **Authentication → Email Templates → Magic Link** or there is no code to type.
-- Auth errors arriving as `?error=` / `#error=` are now surfaced on the account
-  page instead of vanishing.
+**What works today, with no configuration:** request the link *on the device you
+want to sign in on*, and open the email there. Once per device, then they all
+stay in step. The account page says so plainly, because assuming a link is
+portable is a perfectly reasonable thing to assume.
+
+**The nicer fix is blocked, and not worth unblocking yet.** A 6-digit code
+(`verifyOtp`) carries no verifier and works from anywhere; the code path is
+built and sits behind a "my email has a code" toggle on the account page. But
+the default Magic Link template renders only `{{ .ConfirmationURL }}`, and
+**Supabase gates email-template editing behind custom SMTP** — so switching it on
+means standing up an email provider and a sendable domain. That's the right work
+to do before outside testers, and premature purely to save a per-device sign-in.
+
+The other route is `flowType: "implicit"`, where the link carries tokens in the
+URL fragment and therefore works on any device with no template change. Rejected
+for now: it puts session tokens in browser history for a convenience the
+per-device flow already provides. Worth reconsidering only if per-device sign-in
+turns out to confuse real users.
+
+Auth errors arriving as `?error=` / `#error=` are surfaced on the account page
+instead of vanishing — without that, this failure looks like nothing happening.
 
 ### 3. Free Supabase projects pause after ~7 days idle
 
