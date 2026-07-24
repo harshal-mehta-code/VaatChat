@@ -221,6 +221,32 @@ truth, the tooling just makes it cheap. (I'll pre-seed my best attempt at the
 10 vowels so there's something to correct rather than a blank page — correcting
 is faster than authoring.)
 
+### 3.2b Fluent hand vs. teaching hand (learned during the first capture)
+
+The first real capture surfaced something the plan hadn't anticipated. Asked to
+write naturally, a fluent native writer draws most letters in **one unbroken
+motion** — body straight into the right-hand stem, no pen lift. That's not
+sloppiness; it's what fluency looks like, and it's how the author genuinely
+writes. (Tellingly, their own capture *did* separate the stem on ગ and આ —
+natural variance, not a rule.)
+
+But the two artefacts have different jobs:
+
+| | Fluent hand | Teaching hand |
+|---|---|---|
+| Strokes for ખ | 1 | 2 (body, stem) |
+| Feedback we can give | one verdict for the whole letter | "stroke 2 went backwards" |
+| Trace mode | one long sweep to follow | discrete beats, each snapping green |
+| Who it's for | someone who already writes | someone learning from zero |
+
+So the shipped data is the **teaching** breakdown, derived from the fluent
+capture by splitting the terminal stem (steep, downward, late in the stroke,
+with a real letter body before it — guarded so it never bisects a ા vertical or
+an ઐ diagonal). The fluent capture is kept in git history, and is the raw
+material for a genuinely nice future beat: teach the breakdown, then show
+*"and here's how it looks when you actually write it"* — the transition from
+learner to native hand, made visible. No app does that.
+
 ### 3.3 The demonstration
 
 An SVG per-stroke `<path>` with animated `stroke-dashoffset` — the classic
