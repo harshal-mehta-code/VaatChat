@@ -82,6 +82,8 @@ Each pillar maps to a concrete mechanic, so the "fun" is never decorative — it
 | **Intrinsic motivation (SDT)** | Autonomy, competence, relatedness sustain motivation better than pure rewards. | Personal "why" goals, mastery framing, family/community connection (see §6). |
 
 **Sources** are collected in [`docs/RESEARCH.md`](./RESEARCH.md).
+Infrastructure choices, free-tier limits, and the pre-launch checklist live in
+[`docs/STACK.md`](./STACK.md).
 
 ---
 
