@@ -97,6 +97,28 @@ export function knownItemIds(p: Progress): string[] {
 
 export type ItemStatus = "new" | "learning" | "known";
 
+export interface StatusCounts {
+  new: number;
+  learning: number;
+  known: number;
+}
+
+/**
+ * How a set of items breaks down across the three states.
+ *
+ * "Known" is a real bar — two correct sightings on separate occasions — which is
+ * the right meaning for the word, but it makes for a terrible *only* progress
+ * indicator: a drill session shows each letter once, so a learner can answer
+ * everything correctly and watch a "known" counter sit at zero. Surfacing
+ * `learning` alongside it is what lets effort show up immediately without
+ * cheapening what mastery means.
+ */
+export function statusCounts(p: Progress, ids: string[]): StatusCounts {
+  const counts: StatusCounts = { new: 0, learning: 0, known: 0 };
+  for (const id of ids) counts[itemStatus(p, id)]++;
+  return counts;
+}
+
 /** Learning status for any SRS-tracked id (vocab item or akshar). Drives the
  *  "New / Learning / Known" chips so mastery reflects real practice, not a
  *  one-way self-report toggle. */

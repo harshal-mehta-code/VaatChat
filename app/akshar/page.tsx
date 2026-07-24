@@ -5,11 +5,12 @@ import Link from "next/link";
 import { VOWELS, CONSONANTS, TEACHABLE_CONSONANTS } from "@/lib/content";
 import { strokeGlyph } from "@/lib/content/strokes";
 import { useProgress } from "@/lib/client/useProgress";
-import { itemStatus, writingCardId } from "@/lib/core/progress";
+import { itemStatus, statusCounts, writingCardId } from "@/lib/core/progress";
 import AksharCard from "@/components/AksharCard";
 import BarakshariGrid from "@/components/BarakshariGrid";
 import AksharPractice from "@/components/AksharPractice";
 import WriteSession, { type WritableLetter } from "@/components/WriteSession";
+import MasteryBar from "@/components/MasteryBar";
 
 type Tab = "vowels" | "consonants" | "barakshari";
 
@@ -31,18 +32,18 @@ export default function AksharLabPage() {
   const [practicing, setPracticing] = useState(false);
   const [writing, setWriting] = useState(false);
 
-  const knownCount = useMemo(
-    () =>
-      hydrated
-        ? PRACTICE_LETTERS.filter((a) => itemStatus(progress, a.id) === "known").length
-        : 0,
+  const EMPTY = { new: 0, learning: 0, known: 0 };
+  const readCounts = useMemo(
+    () => (hydrated ? statusCounts(progress, PRACTICE_LETTERS.map((a) => a.id)) : EMPTY),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [progress, hydrated],
   );
-  const writtenCount = useMemo(
+  const writeCounts = useMemo(
     () =>
       hydrated
-        ? WRITABLE.filter((l) => itemStatus(progress, writingCardId(l.akshar.id)) === "known").length
-        : 0,
+        ? statusCounts(progress, WRITABLE.map((l) => writingCardId(l.akshar.id)))
+        : EMPTY,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [progress, hydrated],
   );
 
@@ -75,18 +76,12 @@ export default function AksharLabPage() {
 
       {/* Practice CTA + mastery summary */}
       <div className="rounded-2xl border border-peacock/40 bg-peacock/10 p-4">
-        <div className="mb-3 flex items-baseline justify-between">
-          <span className="text-sm font-semibold text-ink">
-            {knownCount} of {PRACTICE_LETTERS.length} letters known
-          </span>
-          <span className="text-xs text-ink-soft">practice to master</span>
-        </div>
-        <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-surface-2">
-          <div
-            className="h-full rounded-full bg-peacock transition-[width]"
-            style={{ width: `${(knownCount / PRACTICE_LETTERS.length) * 100}%` }}
-          />
-        </div>
+        <MasteryBar
+          counts={readCounts}
+          total={PRACTICE_LETTERS.length}
+          accent="peacock"
+          noun="letters known"
+        />
         <button
           type="button"
           onClick={() => setPracticing(true)}
@@ -100,18 +95,12 @@ export default function AksharLabPage() {
           form it are different skills, so they're tracked separately. */}
       {WRITABLE.length > 0 && (
         <div className="rounded-2xl border border-magenta/40 bg-magenta/10 p-4">
-          <div className="mb-3 flex items-baseline justify-between">
-            <span className="text-sm font-semibold text-ink">
-              {writtenCount} of {WRITABLE.length} letters you can write
-            </span>
-            <span className="text-xs text-ink-soft">by hand</span>
-          </div>
-          <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-surface-2">
-            <div
-              className="h-full rounded-full bg-magenta transition-[width]"
-              style={{ width: `${(writtenCount / WRITABLE.length) * 100}%` }}
-            />
-          </div>
+          <MasteryBar
+            counts={writeCounts}
+            total={WRITABLE.length}
+            accent="magenta"
+            noun="letters you can write"
+          />
           <button
             type="button"
             onClick={() => setWriting(true)}

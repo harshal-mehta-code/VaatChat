@@ -75,6 +75,14 @@ export default function WriteSession({
 
   function advance(score: GlyphScore) {
     if (stage === "trace") {
+      // Tracing is guided practice, not recall, so it must never grade like it —
+      // but it's still real work, and walking away after it shouldn't leave a
+      // learner with nothing. Credit the effort, and register a first encounter
+      // so the letter shows as in progress. Only for a letter with no card yet:
+      // an established one must never be pushed backwards by a traced attempt.
+      if (score.stars >= 2) award(XP.exercise);
+      const id = writingCardId(current.akshar.id);
+      if (itemStatus(progress, id) === "new") gradeItem(id, "again");
       setStageOverride("write");
       return;
     }
