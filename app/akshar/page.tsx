@@ -17,8 +17,10 @@ const ALL_LETTERS = [...VOWELS, ...CONSONANTS];
 /** ઙ and ઞ appear on the chart but never alone, so they stay out of drills. */
 const PRACTICE_LETTERS = [...VOWELS, ...TEACHABLE_CONSONANTS];
 
-/** Letters someone has hand-authored stroke data for — the writing track's pool. */
-const WRITABLE: WritableLetter[] = ALL_LETTERS.flatMap((akshar) => {
+/** Letters someone has hand-authored stroke data for — the writing track's pool.
+ *  Rare letters are excluded here for the same reason they're excluded from
+ *  drills: nobody needs to practise writing a letter that never stands alone. */
+const WRITABLE: WritableLetter[] = PRACTICE_LETTERS.flatMap((akshar) => {
   const glyph = strokeGlyph(akshar.id);
   return glyph && glyph.strokes.length > 0 ? [{ akshar, glyph }] : [];
 });
