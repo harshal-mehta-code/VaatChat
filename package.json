@@ -10,7 +10,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "gen:audio": "node --experimental-strip-types scripts/generate-audio.ts",
-    "check:audio": "node --experimental-strip-types scripts/check-audio.ts"
+    "check:audio": "node --experimental-strip-types scripts/check-audio.ts",
+    "gen:review": "node --experimental-strip-types scripts/gen-review-sheet.ts"
   },
   "dependencies": {
     "next": "15.1.11",
