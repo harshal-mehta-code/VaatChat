@@ -19,7 +19,7 @@
 // we, at the exact moment of confusion, which drills the hardest distinction for
 // an English ear while teaching the tool she'll actually use.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Akshar, BarakshariCell, LexItem } from "@/lib/core/types";
 import { useProgress } from "@/lib/client/useProgress";
 import { itemStatus } from "@/lib/core/progress";
@@ -179,7 +179,6 @@ function ScriptReveal({
 
 export default function TypeSession({ pools, onExit }: { pools: TypePools; onExit: () => void }) {
   const { progress, gradeItem, award } = useProgress();
-  const [round, setRound] = useState(0);
   const [showIntro, setShowIntro] = useState(false);
 
   useEffect(() => {
@@ -190,29 +189,33 @@ export default function TypeSession({ pools, onExit }: { pools: TypePools; onExi
     }
   }, []);
 
-  const knownLetters = useMemo(
-    () => pools.letters.filter((a) => itemStatus(progress, a.id) === "known").length,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [progress, pools.letters],
-  );
+  // Live inputs, read only at the moment a session is composed. Grading an
+  // answer updates `progress`, which hands us a fresh `pools` object on the
+  // very next render — deriving the session from that reactively would
+  // reshuffle the questions *while one is being answered*, so your tap lands on
+  // whatever replaced the question you meant. (Same trap, same fix as
+  // ReviewSession; it bites any session whose pool is derived from progress.)
+  const live = useRef({ pools, progress });
+  live.current = { pools, progress };
 
-  const session = useMemo(
-    () =>
-      buildSession(
-        pools,
-        (a) => {
-          const status = itemStatus(progress, a.id);
-          if (status === "new") return "match";
-          if (status === "learning") return Math.random() < 0.5 ? "hear" : "type";
-          return "type";
-        },
-        knownLetters,
-      ),
-    // Rebuilt only between rounds: re-deriving mid-session on every graded card
-    // would reshuffle the questions under the learner.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [pools, round],
-  );
+  const compose = useCallback(() => {
+    const { pools: p, progress: pr } = live.current;
+    const knownLetters = p.letters.filter((a) => itemStatus(pr, a.id) === "known").length;
+    return buildSession(
+      p,
+      (a) => {
+        const status = itemStatus(pr, a.id);
+        if (status === "new") return "match";
+        if (status === "learning") return Math.random() < 0.5 ? "hear" : "type";
+        return "type";
+      },
+      knownLetters,
+    );
+  }, []);
+
+  // Composed once, then left alone until the learner asks for another round —
+  // at which point it re-reads the ref, so rungs reflect what they just learned.
+  const [session, setSession] = useState<Question[]>(compose);
 
   const [index, setIndex] = useState(0);
   const [input, setInput] = useState("");
@@ -304,7 +307,7 @@ export default function TypeSession({ pools, onExit }: { pools: TypePools; onExi
   }
 
   function again() {
-    setRound((r) => r + 1);
+    setSession(compose());
     setIndex(0);
     setInput("");
     setPicked(null);

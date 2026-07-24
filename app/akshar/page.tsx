@@ -72,6 +72,13 @@ export default function AksharLabPage() {
   // Words the learner has actually met, so a typing session never demands
   // vocabulary they've never seen. Falls back to the first few so day one isn't
   // empty.
+  //
+  // Keyed on what can actually change the pool rather than on `progress`
+  // itself: every XP award produces a new progress object, and a session
+  // component handed a fresh pool each answer is how questions end up
+  // reshuffling mid-question. Cheap insurance for a mistake this codebase has
+  // now made twice.
+  const poolKey = `${progress.completedLessons.length}:${Object.keys(progress.cards).length}`;
   const typePools: TypePools = useMemo(() => {
     const met = TYPABLE_WORDS.filter((i) => progress.cards[i.id]);
     const freq = unlockedFrequency(progress).filter((i) => acceptsTyped(i.gujarati, i.roman));
@@ -81,7 +88,8 @@ export default function AksharLabPage() {
       syllables: TYPE_SYLLABLES,
       words: words.length ? words : TYPABLE_WORDS.slice(0, 6),
     };
-  }, [progress]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [poolKey]);
 
   if (practicing) {
     return (
