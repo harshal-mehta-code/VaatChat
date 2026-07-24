@@ -9,7 +9,7 @@ const MODES = [
     href: "/akshar",
     guj: "અક્ષર",
     title: "Akshar Lab",
-    blurb: "Learn & practice the script",
+    blurb: "Read it, write it by hand, type it",
     emoji: "📝",
     ring: "border-peacock/40 bg-peacock/10 hover:bg-peacock/15",
     chev: "text-peacock",

@@ -2,14 +2,23 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { VOWELS, CONSONANTS, TEACHABLE_CONSONANTS } from "@/lib/content";
+import {
+  VOWELS,
+  CONSONANTS,
+  TEACHABLE_CONSONANTS,
+  ITEMS,
+  barakshariGrid,
+  unlockedFrequency,
+} from "@/lib/content";
 import { strokeGlyph } from "@/lib/content/strokes";
 import { useProgress } from "@/lib/client/useProgress";
 import { itemStatus, statusCounts, writingCardId } from "@/lib/core/progress";
+import { acceptsTyped } from "@/lib/core/translit";
 import AksharCard from "@/components/AksharCard";
 import BarakshariGrid from "@/components/BarakshariGrid";
 import AksharPractice from "@/components/AksharPractice";
 import WriteSession, { type WritableLetter } from "@/components/WriteSession";
+import TypeSession, { type TypePools } from "@/components/TypeSession";
 import MasteryBar from "@/components/MasteryBar";
 
 type Tab = "vowels" | "consonants" | "barakshari";
@@ -26,11 +35,24 @@ const WRITABLE: WritableLetter[] = PRACTICE_LETTERS.flatMap((akshar) => {
   return glyph && glyph.strokes.length > 0 ? [{ akshar, glyph }] : [];
 });
 
+/** Syllables worth typing: every barakshari cell, flattened. */
+const TYPE_SYLLABLES = barakshariGrid().flatMap(({ cells }) => cells);
+
+/**
+ * Words whose romanization really does produce their spelling on a phonetic
+ * keyboard. A handful of ours don't — મમ્મી is written "Mummy" here because
+ * that's how it sounds to an English ear, but you'd type `mammi` — and drilling
+ * those would teach a spelling that doesn't work. `npm run check:translit`
+ * lists exactly which ones sit out.
+ */
+const TYPABLE_WORDS = ITEMS.filter((i) => acceptsTyped(i.gujarati, i.roman));
+
 export default function AksharLabPage() {
   const { progress, hydrated } = useProgress();
   const [tab, setTab] = useState<Tab>("vowels");
   const [practicing, setPracticing] = useState(false);
   const [writing, setWriting] = useState(false);
+  const [typing, setTyping] = useState(false);
 
   const EMPTY = { new: 0, learning: 0, known: 0 };
   const readCounts = useMemo(
@@ -47,6 +69,20 @@ export default function AksharLabPage() {
     [progress, hydrated],
   );
 
+  // Words the learner has actually met, so a typing session never demands
+  // vocabulary they've never seen. Falls back to the first few so day one isn't
+  // empty.
+  const typePools: TypePools = useMemo(() => {
+    const met = TYPABLE_WORDS.filter((i) => progress.cards[i.id]);
+    const freq = unlockedFrequency(progress).filter((i) => acceptsTyped(i.gujarati, i.roman));
+    const words = [...met, ...freq];
+    return {
+      letters: PRACTICE_LETTERS,
+      syllables: TYPE_SYLLABLES,
+      words: words.length ? words : TYPABLE_WORDS.slice(0, 6),
+    };
+  }, [progress]);
+
   if (practicing) {
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-4 py-6 pb-24">
@@ -61,6 +97,14 @@ export default function AksharLabPage() {
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-[720px] flex-col px-4 py-6 pb-24">
         <WriteSession pool={WRITABLE} onExit={() => setWriting(false)} />
+      </div>
+    );
+  }
+
+  if (typing) {
+    return (
+      <div className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-4 py-6 pb-24">
+        <TypeSession pools={typePools} onExit={() => setTyping(false)} />
       </div>
     );
   }
@@ -114,6 +158,26 @@ export default function AksharLabPage() {
           </p>
         </div>
       )}
+
+      {/* Typing — the third skill, and the one with a same-week payoff. No
+          mastery bar of its own on purpose: typing grades the letter's own
+          card, because it's a harder direction on the same knowledge rather
+          than a separate memory (docs/LEKHAN.md §4). */}
+      <div className="rounded-2xl border border-marigold/40 bg-marigold/10 p-4">
+        <p className="mb-1 text-base font-semibold text-ink">Type it on your phone</p>
+        <p className="mb-3 text-sm text-ink-soft">
+          Gujarati keyboards are phonetic — type <span className="font-mono text-ink">kem cho</span>,
+          get <span className="guj text-base text-ink">કેમ છો</span>. The fastest route to texting
+          the family group in Gujarati.
+        </p>
+        <button
+          type="button"
+          onClick={() => setTyping(true)}
+          className="w-full rounded-full bg-marigold px-6 py-3 text-base font-semibold text-on-accent active:scale-[.99]"
+        >
+          ⌨️ Learn to type →
+        </button>
+      </div>
 
       <p className="text-sm text-ink-soft">
         Browse the script below — tap any letter for its shape→sound hint — then hit{" "}

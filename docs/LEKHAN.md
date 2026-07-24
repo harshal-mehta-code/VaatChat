@@ -5,9 +5,14 @@
 > Reading is only half of literacy. This is the other half: forming the letters
 > with your own hand, and typing them on the phone you already own.
 
-**Status:** Phase B shipped — stroke data captured (37 letters), Stroke Lab,
-scorer, and the Watch → Trace → Write ladder are live in Akshar Lab. Phase A
-(Lipi/typing) and Phase C (word writing) still to come.
+**Status:** Phases A and B shipped.
+ · **Lekhan** — stroke data captured (all 53 glyphs), Stroke Lab, the offline
+   scorer, and the Watch → Trace → Write ladder are live in Akshar Lab.
+ · **Lipi** — `lib/core/translit.ts` (segmenter + matcher + tables),
+   `components/TypeSession.tsx` (the five-rung ladder, candidate picker, and the
+   progressive reveal), guarded by `npm run check:translit`.
+ · Still to come: **Phase C**, writing whole *words* by hand (§3.7), and
+   sentences in the typing track (§2.4 rung 5 currently stops at single words).
 **Date:** 2026-07-24
 **Origin:** feature request from the app's second real user (the owner's wife),
 after trying the app — *"there's no app that shows you exactly how to write the
@@ -163,6 +168,39 @@ Conjuncts (ક્ષ, જ્ઞ, ત્ર, and true halant stacks) are the hard
 segmenter and the writing composer. **Explicitly out of v1**, handled by a
 small per-word override table when they appear, and revisited once the simple
 case is solid.
+
+### 2.8 What shipping it actually taught us
+
+Three things the plan got wrong or didn't anticipate:
+
+**Conjuncts turned out to be nearly free — for *typing*.** The plan quarantined
+them, but a halant stack's keyboard spelling is just its stems concatenated:
+ત્ર → `tr`, સ્વ → `sv`, ક્ષ → `ksh`. So the segmenter handles them by
+construction and the override table has exactly one entry (જ્ઞ, where nobody
+types `jny`). They remain genuinely hard for the *writing* composer, which is a
+different problem — see §3.7.
+
+**The content validated the engine, and then the engine audited the content.**
+`npm run check:translit` asserts that every romanization we show is a spelling
+the matcher accepts. 362/362 letters and barakshari cells pass, and **125 of 130
+words**. The five that don't are the interesting part: મમ્મી is written
+*"Mummy"* here because that's how it sounds to an English ear, but you'd type
+`mammi`. Rather than "fixing" a reading aid that isn't broken, the app filters
+the word pool on `acceptsTyped()` at runtime — so a learner is never asked to
+type a spelling that wouldn't work. The check reports the exclusions instead of
+failing on them, and holds a coverage floor to catch a genuine regression.
+
+**The nasal mark is invisible on a keyboard.** શું is *typed* `shu`; you get the
+ં by picking a candidate. Since our romanizations consistently omit it, the
+matcher accepts the mark as optional — and the reveal is what teaches that it's
+there. Same class of honesty problem as §2.2, same answer: show the mismatch
+rather than paper over it.
+
+One deliberate deviation from §4's table: the `typed` forms live in
+`lib/core/translit.ts` rather than as a field on `Akshar`. They describe
+*Unicode*, not our curriculum — a fixed property of the script that an iOS
+client would need verbatim — so they belong in the portable core, not in
+content. The content tables stay teaching material.
 
 ---
 

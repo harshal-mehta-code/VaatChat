@@ -2,7 +2,7 @@
   "name": "vaatchat",
   "version": "0.1.0",
   "private": true,
-  "description": "A fun, research-backed, gamified Gujarati learning app — conversation-first for zero-exposure beginners.",
+  "description": "A fun, research-backed, gamified Gujarati learning app \u2014 conversation-first for zero-exposure beginners.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -12,6 +12,7 @@
     "gen:audio": "node --experimental-strip-types scripts/generate-audio.ts",
     "check:audio": "node --experimental-strip-types scripts/check-audio.ts",
     "check:strokes": "node --experimental-strip-types scripts/check-strokes.ts",
+    "check:translit": "node --experimental-strip-types scripts/check-translit.ts",
     "gen:review": "node --experimental-strip-types scripts/gen-review-sheet.ts",
     "check:sync": "node --experimental-strip-types scripts/check-sync.ts",
     "migrate": "node --env-file=.env.local --experimental-strip-types scripts/migrate.ts",
