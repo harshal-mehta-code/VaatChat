@@ -15,6 +15,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { ITEMS } from "../lib/content/units.ts";
+import { FREQUENCY_ITEMS } from "../lib/content/frequency.ts";
 import { VOWELS, CONSONANTS, barakshariGrid } from "../lib/content/akshar.ts";
 import { SCENARIOS } from "../lib/content/scenarios.ts";
 import { barakshariAudioPath } from "../lib/content/audio-paths.ts";
@@ -33,6 +34,7 @@ function collectRefs(): Ref[] {
   };
 
   for (const it of ITEMS) add(it.audio, `word: ${it.roman}`);
+  for (const it of FREQUENCY_ITEMS) add(it.audio, `freq: ${it.roman}`);
   for (const a of [...VOWELS, ...CONSONANTS]) add(a.audio, `letter: ${a.roman}`);
   for (const { cells } of barakshariGrid()) {
     for (const cell of cells) add(barakshariAudioPath(cell), `barakshari: ${cell.roman}`);

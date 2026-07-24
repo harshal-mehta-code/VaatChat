@@ -7,6 +7,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ITEMS } from "@/lib/content/units";
+import { FREQUENCY_ITEMS, unlockedFrequency } from "@/lib/content/frequency";
 import type { LexItem } from "@/lib/core/types";
 import { useProgress } from "@/lib/client/useProgress";
 import { dueItemIds, itemStatus } from "@/lib/core/progress";
@@ -16,8 +17,19 @@ export default function ReviewPage() {
   const { progress, hydrated } = useProgress();
   const [reviewing, setReviewing] = useState(false);
 
-  const deck = useMemo(
-    () => (hydrated ? ITEMS.filter((item) => Boolean(progress.cards[item.id])) : []),
+  // The deck = every themed word you've practiced, plus the frequency-bank
+  // "core words" unlocked so far. Unlocked core words with no card yet are
+  // simply new: they get an SRS card the first time you review them.
+  const deck = useMemo(() => {
+    if (!hydrated) return [] as LexItem[];
+    const carded = ITEMS.filter((item) => Boolean(progress.cards[item.id]));
+    const byId = new Map<string, LexItem>();
+    for (const item of [...carded, ...unlockedFrequency(progress)]) byId.set(item.id, item);
+    return [...byId.values()];
+  }, [progress, hydrated]);
+
+  const freqUnlockedCount = useMemo(
+    () => (hydrated ? unlockedFrequency(progress).length : 0),
     [progress, hydrated],
   );
   const known = useMemo(
@@ -97,11 +109,20 @@ export default function ReviewPage() {
             <div className="h-2 w-full overflow-hidden rounded-full bg-surface-2">
               <div
                 className="h-full rounded-full bg-peacock transition-[width]"
-                style={{ width: `${(known / ITEMS.length) * 100}%` }}
+                style={{ width: `${deck.length ? (known / deck.length) * 100 : 0}%` }}
               />
             </div>
-            <div className="mt-1 text-right text-[11px] text-ink-soft">
-              {known} of {ITEMS.length} words mastered
+            <div className="mt-1 flex items-center justify-between text-[11px] text-ink-soft">
+              {freqUnlockedCount > 0 ? (
+                <span>
+                  🔑 {freqUnlockedCount}/{FREQUENCY_ITEMS.length} core words unlocked
+                </span>
+              ) : (
+                <span />
+              )}
+              <span>
+                {known} of {deck.length} words mastered
+              </span>
             </div>
           </div>
 
