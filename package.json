@@ -13,6 +13,7 @@
     "check:audio": "node --experimental-strip-types scripts/check-audio.ts",
     "check:strokes": "node --experimental-strip-types scripts/check-strokes.ts",
     "check:translit": "node --experimental-strip-types scripts/check-translit.ts",
+    "check:compose": "node --experimental-strip-types scripts/check-compose.ts",
     "gen:review": "node --experimental-strip-types scripts/gen-review-sheet.ts",
     "check:sync": "node --experimental-strip-types scripts/check-sync.ts",
     "migrate": "node --env-file=.env.local --experimental-strip-types scripts/migrate.ts",

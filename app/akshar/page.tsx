@@ -10,14 +10,14 @@ import {
   barakshariGrid,
   unlockedFrequency,
 } from "@/lib/content";
-import { strokeGlyph } from "@/lib/content/strokes";
+import { strokeGlyph, composeGujarati } from "@/lib/content/strokes";
 import { useProgress } from "@/lib/client/useProgress";
 import { itemStatus, statusCounts, writingCardId } from "@/lib/core/progress";
 import { acceptsTyped } from "@/lib/core/translit";
 import AksharCard from "@/components/AksharCard";
 import BarakshariGrid from "@/components/BarakshariGrid";
 import AksharPractice from "@/components/AksharPractice";
-import WriteSession, { type WritableLetter } from "@/components/WriteSession";
+import WriteSession, { type WriteTarget } from "@/components/WriteSession";
 import TypeSession, { type TypePools } from "@/components/TypeSession";
 import MasteryBar from "@/components/MasteryBar";
 
@@ -30,9 +30,35 @@ const PRACTICE_LETTERS = [...VOWELS, ...TEACHABLE_CONSONANTS];
 /** Letters someone has hand-authored stroke data for — the writing track's pool.
  *  Rare letters are excluded here for the same reason they're excluded from
  *  drills: nobody needs to practise writing a letter that never stands alone. */
-const WRITABLE: WritableLetter[] = PRACTICE_LETTERS.flatMap((akshar) => {
+const WRITABLE: WriteTarget[] = PRACTICE_LETTERS.flatMap((akshar) => {
   const glyph = strokeGlyph(akshar.id);
-  return glyph && glyph.strokes.length > 0 ? [{ akshar, glyph }] : [];
+  if (!glyph || glyph.strokes.length === 0) return [];
+  return [
+    {
+      id: akshar.id,
+      strokes: glyph.strokes,
+      char: akshar.char,
+      label: akshar.roman,
+      note: akshar.mnemonic,
+      audio: akshar.audio,
+      ghostChar: akshar.char,
+    },
+  ];
+});
+
+/**
+ * Words we can write out of the letters we've authored — no per-word data, no
+ * second capture session (docs/LEKHAN.md §3.7). Conjuncts and nasal marks put a
+ * word out of reach, so composition returns null and it simply sits out.
+ *
+ * Capped at four letters: the pad grows sideways with the word, and past four
+ * a phone-width box gets too short to write in comfortably.
+ */
+const MAX_WORD_LETTERS = 4;
+const WRITABLE_WORDS = ITEMS.flatMap((item) => {
+  const composed = composeGujarati(item.gujarati);
+  if (!composed || composed.clusters.length > MAX_WORD_LETTERS) return [];
+  return [{ item, composed }];
 });
 
 /** Syllables worth typing: every barakshari cell, flattened. */
@@ -52,6 +78,7 @@ export default function AksharLabPage() {
   const [tab, setTab] = useState<Tab>("vowels");
   const [practicing, setPracticing] = useState(false);
   const [writing, setWriting] = useState(false);
+  const [writingWords, setWritingWords] = useState(false);
   const [typing, setTyping] = useState(false);
 
   const EMPTY = { new: 0, learning: 0, known: 0 };
@@ -61,10 +88,7 @@ export default function AksharLabPage() {
     [progress, hydrated],
   );
   const writeCounts = useMemo(
-    () =>
-      hydrated
-        ? statusCounts(progress, WRITABLE.map((l) => writingCardId(l.akshar.id)))
-        : EMPTY,
+    () => (hydrated ? statusCounts(progress, WRITABLE.map((l) => writingCardId(l.id))) : EMPTY),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [progress, hydrated],
   );
@@ -79,6 +103,29 @@ export default function AksharLabPage() {
   // reshuffling mid-question. Cheap insurance for a mistake this codebase has
   // now made twice.
   const poolKey = `${progress.completedLessons.length}:${Object.keys(progress.cards).length}`;
+
+  // Words to write by hand: the ones she's actually met, so the drill never
+  // asks her to form a word she's never read. Keyed the same way, for the same
+  // reason.
+  const wordTargets: WriteTarget[] = useMemo(
+    () => {
+      const met = WRITABLE_WORDS.filter(({ item }) => progress.cards[item.id]);
+      const source = met.length >= 3 ? met : WRITABLE_WORDS;
+      return source.map(({ item, composed }) => ({
+        id: item.id,
+        strokes: composed.strokes,
+        width: composed.width,
+        parts: composed.clusters,
+        char: item.gujarati,
+        label: item.roman,
+        note: item.english,
+        audio: item.audio,
+      }));
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [poolKey],
+  );
+
   const typePools: TypePools = useMemo(() => {
     const met = TYPABLE_WORDS.filter((i) => progress.cards[i.id]);
     const freq = unlockedFrequency(progress).filter((i) => acceptsTyped(i.gujarati, i.roman));
@@ -101,10 +148,18 @@ export default function AksharLabPage() {
 
   // Writing gets a wider shell than the rest of the app: the pad is the feature,
   // and a phone-width canvas would undercut it on the iPad it's made for.
-  if (writing) {
+  if (writing || writingWords) {
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-[720px] flex-col px-4 py-6 pb-24">
-        <WriteSession pool={WRITABLE} onExit={() => setWriting(false)} />
+        {writing ? (
+          <WriteSession pool={WRITABLE} onExit={() => setWriting(false)} />
+        ) : (
+          <WriteSession
+            pool={wordTargets}
+            kind="word"
+            onExit={() => setWritingWords(false)}
+          />
+        )}
       </div>
     );
   }
@@ -164,6 +219,27 @@ export default function AksharLabPage() {
             Watch it formed stroke by stroke, then trace it — works with a finger, best
             with a Pencil.
           </p>
+
+          {/* Whole words: the same ladder, one rung up. Deliberately secondary
+              rather than hidden — someone who wants to jump ahead should be
+              able to, the same way Watch stays a tap away inside a session. */}
+          {wordTargets.length > 0 && (
+            <>
+              <div className="my-3 h-px bg-magenta/20" />
+              <button
+                type="button"
+                onClick={() => setWritingWords(true)}
+                className="w-full rounded-full border border-magenta/50 bg-surface px-6 py-3 text-base font-semibold text-ink active:scale-[.99]"
+              >
+                ✒️ Write whole words →
+              </button>
+              <p className="mt-2 text-center text-xs text-ink-soft">
+                Letters, matras and spacing together — including the{" "}
+                <span className="guj text-ink">િ</span> that appears on the left but is
+                written second.
+              </p>
+            </>
+          )}
         </div>
       )}
 

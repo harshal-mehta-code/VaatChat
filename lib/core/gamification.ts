@@ -20,6 +20,7 @@ export const XP = {
   scenarioComplete: 40,
   aksharMastered: 10,
   letterWritten: 8, // formed a letter by hand, cleanly
+  wordWritten: 14, // wrote a whole word by hand — letters, matras, spacing
   wordTyped: 10, // typed a whole word into Gujarati script
   grammarConcept: 25, // a grammar concept mastered end-to-end
   perfectLesson: 10, // bonus

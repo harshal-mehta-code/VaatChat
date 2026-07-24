@@ -7,11 +7,14 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 import type { Akshar, StrokeGlyph } from "../core/types";
+import { GLYPH_BOX } from "../core/strokes";
+import { segmentGujarati } from "../core/translit";
+import { composeSegmented, type ComposedWord } from "../core/compose";
 import { VOWELS, CONSONANTS } from "./akshar";
 import { STROKE_GLYPHS } from "./stroke-data";
 
 export { STROKE_GLYPHS };
-export type { StrokeGlyph };
+export type { StrokeGlyph, ComposedWord };
 
 /**
  * How the faint reference glyph is typeset inside the em-box. These are fixed
@@ -94,4 +97,34 @@ export function hasStrokes(id: string): boolean {
 /** Letters that can be *practised* today — i.e. someone has authored them. */
 export function writableTargets(): WritingTarget[] {
   return WRITING_TARGETS.filter((t) => hasStrokes(t.id));
+}
+
+// ── Words ─────────────────────────────────────────────────────────────────
+
+/** Every letter and matra, reachable by the character it draws. */
+const GLYPH_BY_CHAR: Record<string, StrokeGlyph> = Object.fromEntries(
+  WRITING_TARGETS.flatMap((t) => {
+    const glyph = STROKE_GLYPH_BY_ID[t.id];
+    return glyph && glyph.strokes.length > 0 ? [[t.char, glyph] as const] : [];
+  }),
+);
+
+/** The consonant every matra was authored on top of — the reference frame. */
+const BASE_GLYPH = GLYPH_BY_CHAR[MATRA_BASE];
+
+/**
+ * A word's full stroke recipe, composed from the letters we've authored — or
+ * null if we can't honestly draw it yet. The rule for "can't" lives in
+ * lib/core/compose.ts; this only supplies the glyphs and the coordinate frame.
+ */
+export function composeGujarati(text: string): ComposedWord | null {
+  if (!BASE_GLYPH) return null;
+  const word = text.normalize("NFC");
+  return composeSegmented(
+    word,
+    segmentGujarati(word),
+    (char) => GLYPH_BY_CHAR[char],
+    BASE_GLYPH,
+    GLYPH_BOX,
+  );
 }

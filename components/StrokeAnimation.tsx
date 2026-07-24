@@ -23,6 +23,8 @@ const TAIL_MS = 200;
 
 interface Props {
   strokes: Stroke[];
+  /** Layout box width. A single letter is square; a word is wider. */
+  width?: number;
   /** Faint glyph shown underneath (the "what it should look like"). */
   ghostChar?: string;
   speed?: AnimSpeed;
@@ -37,6 +39,7 @@ interface Props {
 
 export default function StrokeAnimation({
   strokes,
+  width = GLYPH_BOX,
   ghostChar,
   speed = "slow",
   guides = true,
@@ -159,13 +162,13 @@ export default function StrokeAnimation({
   return (
     <div className={className}>
       <svg
-        viewBox={`0 0 ${GLYPH_BOX} ${GLYPH_BOX}`}
+        viewBox={`0 0 ${width} ${GLYPH_BOX}`}
         className="h-full w-full touch-none select-none"
         role="img"
         aria-label="Stroke order demonstration"
         onClick={play}
       >
-        {guides && <Guides />}
+        {guides && <Guides width={width} />}
 
         {ghostChar && (
           <text
@@ -233,14 +236,23 @@ export default function StrokeAnimation({
   );
 }
 
-/** The four-line ruled guide from a Gujarati school notebook. */
-export function Guides() {
+/**
+ * The four-line ruled guide from a Gujarati school notebook.
+ *
+ * The centre line is a single-letter aid — it says "put the letter here". A
+ * word has several letters and its own spacing to learn, so it gets the ruling
+ * without the centre line.
+ */
+export function Guides({ width = GLYPH_BOX }: { width?: number }) {
+  const right = width - 40;
   return (
     <g stroke="var(--line)" strokeWidth={3}>
-      <rect x={40} y={40} width={920} height={920} fill="none" rx={24} />
-      <line x1={40} y1={295} x2={960} y2={295} strokeDasharray="14 18" />
-      <line x1={40} y1={GLYPH_BASELINE} x2={960} y2={GLYPH_BASELINE} strokeWidth={5} />
-      <line x1={500} y1={40} x2={500} y2={960} strokeDasharray="14 18" opacity={0.6} />
+      <rect x={40} y={40} width={width - 80} height={GLYPH_BOX - 80} fill="none" rx={24} />
+      <line x1={40} y1={295} x2={right} y2={295} strokeDasharray="14 18" />
+      <line x1={40} y1={GLYPH_BASELINE} x2={right} y2={GLYPH_BASELINE} strokeWidth={5} />
+      {width === GLYPH_BOX && (
+        <line x1={width / 2} y1={40} x2={width / 2} y2={GLYPH_BOX - 40} strokeDasharray="14 18" opacity={0.6} />
+      )}
     </g>
   );
 }

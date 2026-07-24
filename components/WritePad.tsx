@@ -8,7 +8,7 @@
 // Nothing here is punitive: a low score offers another go, never a red X.
 
 import { useCallback, useRef, useState } from "react";
-import type { Pt, StrokeGlyph } from "@/lib/core/types";
+import type { Pt, Stroke } from "@/lib/core/types";
 import {
   FEEDBACK_TEXT,
   GLYPH_BOX,
@@ -26,10 +26,19 @@ const MIN_STEP = 4;
 const SIMPLIFY = 5;
 
 interface Props {
-  glyph: StrokeGlyph;
+  /** What to write, already placed in the box: one letter, or a whole word. */
+  reference: Stroke[];
   mode: WriteMode;
-  /** The glyph shown faintly underneath — only in trace mode. */
-  ghostChar: string;
+  /** Box width. A letter is square; a word is wider and its own shape. */
+  width?: number;
+  /** The glyph shown faintly underneath — only in trace mode, and only for a
+   *  single letter: the font's own spacing for a word wouldn't line up with
+   *  the strokes we composed, and two conflicting references teach nothing. */
+  ghostChar?: string;
+  /** Which strokes belong to which letter. Only a word has these — and with
+   *  them the feedback can say "take another look at છો" instead of
+   *  "stroke 6", which is the difference between advice and a stack trace. */
+  parts?: { guj: string; from: number; count: number }[];
   onDone: (score: GlyphScore) => void;
   onWatchAgain?: () => void;
   /** What tapping through leads to — named explicitly, so moving from Trace to
@@ -38,9 +47,11 @@ interface Props {
 }
 
 export default function WritePad({
-  glyph,
+  reference,
   mode,
+  width = GLYPH_BOX,
   ghostChar,
+  parts,
   onDone,
   onWatchAgain,
   continueLabel,
@@ -55,10 +66,10 @@ export default function WritePad({
   const toGlyph = useCallback((clientX: number, clientY: number): Pt => {
     const rect = svgRef.current!.getBoundingClientRect();
     return [
-      ((clientX - rect.left) / rect.width) * GLYPH_BOX,
+      ((clientX - rect.left) / rect.width) * width,
       ((clientY - rect.top) / rect.height) * GLYPH_BOX,
     ];
-  }, []);
+  }, [width]);
 
   function onDown(e: React.PointerEvent<SVGSVGElement>) {
     if (result) return;
@@ -89,7 +100,7 @@ export default function WritePad({
   }
 
   function check() {
-    setResult(scoreGlyph(glyph.strokes, strokes, mode));
+    setResult(scoreGlyph(reference, strokes, mode));
   }
 
   function retry() {
@@ -99,36 +110,43 @@ export default function WritePad({
 
   const showReference = mode === "trace" && !result;
   const canCheck = strokes.length > 0 && !result;
+  // A word needs every pixel it can get — the pad is the feature (LEKHAN.md §6).
+  const shell = width > GLYPH_BOX ? "w-full max-w-[720px]" : "w-full max-w-[560px]";
 
   return (
     <div className="flex w-full flex-col items-center gap-3">
-      <div className="w-full max-w-[560px]">
-        <div className="relative aspect-square w-full rounded-2xl border border-line bg-surface shadow-[var(--shadow)]">
+      <div className={shell}>
+        <div
+          className="relative w-full rounded-2xl border border-line bg-surface shadow-[var(--shadow)]"
+          style={{ aspectRatio: `${width} / ${GLYPH_BOX}` }}
+        >
           <svg
             ref={svgRef}
-            viewBox={`0 0 ${GLYPH_BOX} ${GLYPH_BOX}`}
+            viewBox={`0 0 ${width} ${GLYPH_BOX}`}
             className="absolute inset-0 h-full w-full touch-none select-none"
             onPointerDown={onDown}
             onPointerMove={onMove}
             onPointerUp={onUp}
             onPointerCancel={onUp}
           >
-            <Guides />
+            <Guides width={width} />
 
             {showReference && (
               <>
-                <text
-                  x={GLYPH_CENTER_X}
-                  y={GLYPH_BASELINE}
-                  fontSize={GLYPH_FONT_SIZE}
-                  textAnchor="middle"
-                  className="guj"
-                  fill="var(--ink)"
-                  opacity={0.1}
-                >
-                  {ghostChar}
-                </text>
-                {glyph.strokes.map((s, i) => (
+                {ghostChar && (
+                  <text
+                    x={GLYPH_CENTER_X}
+                    y={GLYPH_BASELINE}
+                    fontSize={GLYPH_FONT_SIZE}
+                    textAnchor="middle"
+                    className="guj"
+                    fill="var(--ink)"
+                    opacity={0.1}
+                  >
+                    {ghostChar}
+                  </text>
+                )}
+                {reference.map((s, i) => (
                   <g key={i}>
                     <path
                       d={toSvgPath(s.points)}
@@ -164,7 +182,7 @@ export default function WritePad({
 
             {/* After checking: her ink over the reference, so the gap is visible. */}
             {result &&
-              glyph.strokes.map((s, i) => (
+              reference.map((s, i) => (
                 <path
                   key={`ref-${i}`}
                   d={toSvgPath(s.points)}
@@ -211,9 +229,11 @@ export default function WritePad({
           onDone={() => onDone(result)}
           onWatchAgain={onWatchAgain}
           continueLabel={continueLabel}
+          shell={shell}
+          parts={parts}
         />
       ) : (
-        <div className="flex w-full max-w-[560px] items-center gap-2">
+        <div className={`flex items-center gap-2 ${shell}`}>
           <button
             type="button"
             onClick={() => setStrokes((s) => s.slice(0, -1))}
@@ -252,17 +272,25 @@ function Feedback({
   onDone,
   onWatchAgain,
   continueLabel,
+  shell,
+  parts,
 }: {
   score: GlyphScore;
   onRetry: () => void;
   onDone: () => void;
   onWatchAgain?: () => void;
   continueLabel: string;
+  shell: string;
+  parts?: { guj: string; from: number; count: number }[];
 }) {
   const codes: FeedbackCode[] = [];
   for (const c of score.codes) if (!codes.includes(c)) codes.push(c);
   for (const p of score.perStroke) for (const c of p.codes) if (!codes.includes(c)) codes.push(c);
   const notes = codes.slice(0, 2);
+
+  // In a word, point at the letter that let it down. One is enough: a list of
+  // everything wrong with your handwriting is not what anyone needs to read.
+  const weakest = weakestPart(score, parts);
 
   const headline =
     score.stars === 3
@@ -274,7 +302,7 @@ function Feedback({
           : "Let's take that one again.";
 
   return (
-    <div className="flex w-full max-w-[560px] flex-col gap-3">
+    <div className={`flex flex-col gap-3 ${shell}`}>
       <div className="rounded-2xl border border-line bg-surface p-4">
         <div className="mb-1 flex items-center justify-between">
           <span className="font-semibold text-ink">{headline}</span>
@@ -283,6 +311,12 @@ function Feedback({
             <span className="opacity-25">{"★".repeat(3 - score.stars)}</span>
           </span>
         </div>
+        {weakest && (
+          <p className="mb-1 text-sm text-ink-soft">
+            The <span className="guj text-base text-ink">{weakest}</span> is the one to
+            look at again.
+          </p>
+        )}
         {notes.length === 0 ? (
           <p className="text-sm text-ink-soft">Right strokes, right order, right direction.</p>
         ) : (
@@ -322,4 +356,25 @@ function Feedback({
       </div>
     </div>
   );
+}
+
+/**
+ * The letter in a word that scored worst — but only when it's meaningfully
+ * worse than the rest. On a letter, or on a word where everything came out
+ * about the same, there's nothing useful to single out and we say nothing.
+ */
+function weakestPart(
+  score: GlyphScore,
+  parts?: { guj: string; from: number; count: number }[],
+): string | null {
+  if (!parts || parts.length < 2) return null;
+  const scored = parts.map((p) => {
+    const strokes = score.perStroke.slice(p.from, p.from + p.count);
+    if (strokes.length === 0) return { guj: p.guj, score: 100 };
+    return { guj: p.guj, score: strokes.reduce((a, s) => a + s.score, 0) / strokes.length };
+  });
+  const worst = scored.reduce((a, b) => (b.score < a.score ? b : a));
+  const rest = scored.filter((s) => s !== worst);
+  const others = rest.reduce((a, s) => a + s.score, 0) / rest.length;
+  return worst.score < 70 && worst.score < others - 12 ? worst.guj : null;
 }

@@ -5,14 +5,18 @@
 > Reading is only half of literacy. This is the other half: forming the letters
 > with your own hand, and typing them on the phone you already own.
 
-**Status:** Phases A and B shipped.
+**Status:** Phases A and B shipped; Phase C's centrepiece — writing whole words
+by hand — shipped with them.
  · **Lekhan** — stroke data captured (all 53 glyphs), Stroke Lab, the offline
-   scorer, and the Watch → Trace → Write ladder are live in Akshar Lab.
+   scorer, and the Watch → Trace → Write ladder are live in Akshar Lab, for
+   single letters *and* for whole words composed from them
+   (`lib/core/compose.ts`, guarded by `npm run check:compose` — §3.7).
  · **Lipi** — `lib/core/translit.ts` (segmenter + matcher + tables),
    `components/TypeSession.tsx` (the five-rung ladder, candidate picker, and the
    progressive reveal), guarded by `npm run check:translit`.
- · Still to come: **Phase C**, writing whole *words* by hand (§3.7), and
-   sentences in the typing track (§2.4 rung 5 currently stops at single words).
+ · Still to come: sentences in the typing track (§2.4 rung 5 currently stops at
+   single words), and the rest of Phase C — `w-` cards surfaced in the Review
+   deck, stars, the pati, and the name moment (§5).
 **Date:** 2026-07-24
 **Origin:** feature request from the app's second real user (the owner's wife),
 after trying the app — *"there's no app that shows you exactly how to write the
@@ -375,6 +379,51 @@ One genuine edge case worth naming: **િ (short i) renders to the LEFT of its
 consonant but is written after it.** Cluster-based composition handles it with a
 negative `dx` — and it becomes a great teaching moment rather than a bug.
 
+### 3.7b What composing them actually taught us
+
+The promise held: **53 authored glyphs, zero new data, 45 of 76 vocabulary
+words writable by hand.** But four things the plan glossed over turned out to
+be the whole problem.
+
+**A matra doesn't have one offset — it has four kinds of relationship.** §3.1
+imagined a single `attach: {dx, dy, scale}` per matra. What the captured data
+actually wants is an *anchor rule*: ા ી ો ૌ keep their distance from the
+consonant's **right edge**; ે ૈ and ુ ૂ keep their offset from its **middle**,
+above and below. And િ does neither — it starts above the letter's right
+shoulder, arcs left over the top and comes down on its left, so it has to
+**stretch to the letter's width**, not shift. A fixed `dx` puts it half-way
+across ખ and hanging off ડ. This is the difference between a plan that sounds
+right and data that is.
+
+**ક is a good reference letter, but not a universal one.** Every matra was
+captured on ક — average width, ordinary ceiling, and, it turns out, *no
+descender*. ફ dives far below where ક stops, so a ુ carried across unchanged
+was drawn straight through ફ's tail. Marks now step clear of the letter rather
+than sitting at a fixed height, and where clearing it would push the mark out
+of the box entirely, we refuse: **ફૂ is the one combination of 306 we won't
+draw**, and saying so is better than drawing it wrong. Same answer the typing
+track gives a word it can't spell.
+
+**Pack by ink, not by advance width.** Laying letters out by their actual
+bounding boxes makes િ free: its stroke reaches left past its own consonant, so
+the packer simply leaves room and the previous letter never collides. A typeset
+advance width would have needed a special case.
+
+**The conjunct quarantine holds here — and it's what costs us.** §2.8 recorded
+that conjuncts turned out nearly free for *typing*, because a halant stack's
+keyboard spelling is just its stems concatenated. Writing is the opposite: a
+stack is a fused shape with strokes of its own, and two letters side by side is
+not what a hand draws. That plus the nasal marks (nobody has authored ં) is the
+whole of the 31 excluded words — including નમસ્તે, મમ્મી, and જય શ્રી કૃષ્ણ,
+which is a shame precisely because §5 wanted that last one as a moment.
+
+**Still untested by a real hand:** the scorer was tuned on single letters, and a
+word introduces a failure mode it has never seen — *spacing*. `scoreGlyph`
+removes translation and uniform scale globally, so writing the letters right but
+spread too far apart shows up as every letter being slightly wrong. It may be
+fine; it may feel harsh. §8's "tolerance needs a hand on the glass" now applies
+twice over.
+
 ---
 
 ## 4. How it drops into the codebase
@@ -392,8 +441,10 @@ Additive, portable-core-respecting, nothing existing is rewritten.
 | `components/` | `StrokeAnimation`, `WritePad`, `WriteSession`, `TypeSession` | `WritePad` is the only genuinely new UI primitive |
 | `app/akshar/[id]/page.tsx` | per-letter detail: hear · watch · write · type | deep-linkable |
 | `app/dev/stroke-lab/page.tsx` | authoring tool | dev-only, `noindex` |
+| `lib/core/compose.ts` | `placeCluster()`, `composeWord()`, `composeSegmented()` | **pure**, and import-free at runtime so the guard can load it |
 | `scripts/check-strokes.ts` | every taught letter has strokes, in-box, non-degenerate | `npm run check:strokes` |
 | `scripts/check-translit.ts` | segmenter round-trips all ~420 content romans | `npm run check:translit` |
+| `scripts/check-compose.ts` | all 306 consonant × matra placements land right | `npm run check:compose` |
 
 **SRS namespacing decision:** writing gets its own card (`w-c-ka`) because motor
 production is a genuinely separate memory. **Typing does not** — a typing drill
@@ -454,8 +505,8 @@ and she gets a usable new skill immediately.
 **authoring session**: she draws the letters, we ship them. Then the four-rung
 ladder over whatever's authored.
 
-**Phase C — Scale & compose.** All letters + matras, word writing via the
-segmenter, `w-` cards in the Review deck, iPad/PWA polish, stars + the pati +
+**Phase C — Scale & compose.** All letters + matras ✅, word writing via the
+segmenter ✅, `w-` cards in the Review deck, iPad/PWA polish, stars + the pati +
 the name moment.
 
 **Phase D — Delight.** Lipi Chat, dictation ("hear it → write it"), a
@@ -472,7 +523,8 @@ Phase A is independently valuable if we stop there. So is B. That's the point.
   the one place the plan depends on someone else's knowledge — hence §3.2.
 - **Tolerance tuning is empirical.** Too strict feels punishing; too loose feels
   fake. Start generous, tune with her hand on the glass. Bias: mastery gates on
-  the *memory* rung, not on pixel accuracy.
+  the *memory* rung, not on pixel accuracy. **Words raise this again** — letter
+  spacing is a signal the scorer was never tuned against (§3.7b).
 - **Conjuncts are deferred**, deliberately (§2.7).
 - **Safari/Pencil latency** is decent but not native-app good. If it grates, the
   fallback is a thin native shell later — the core is already pure TS, so the
