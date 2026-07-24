@@ -19,6 +19,7 @@ export const XP = {
   lessonComplete: 20,
   scenarioComplete: 40,
   aksharMastered: 10,
+  letterWritten: 8, // formed a letter by hand, cleanly
   grammarConcept: 25, // a grammar concept mastered end-to-end
   perfectLesson: 10, // bonus
 } as const;

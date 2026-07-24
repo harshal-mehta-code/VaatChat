@@ -61,6 +61,16 @@ export function grammarCardId(conceptId: string): string {
   return `g-${conceptId}`;
 }
 
+/**
+ * SRS card id for *writing* a letter. Deliberately separate from the letter's
+ * own recognition card: reading ક fluently and being able to form it by hand
+ * are different memories, and anyone who's learned a script has frozen at the
+ * second while breezing through the first. See docs/LEKHAN.md §1.
+ */
+export function writingCardId(aksharId: string): string {
+  return `w-${aksharId}`;
+}
+
 // ── Derived selectors ──────────────────────────────────────────────────────
 
 export function getLevel(p: Progress): LevelInfo {

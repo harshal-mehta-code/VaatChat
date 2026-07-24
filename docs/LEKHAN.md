@@ -5,7 +5,10 @@
 > Reading is only half of literacy. This is the other half: forming the letters
 > with your own hand, and typing them on the phone you already own.
 
-**Status:** Plan. **Date:** 2026-07-24
+**Status:** Phase B shipped — stroke data captured (37 letters), Stroke Lab,
+scorer, and the Watch → Trace → Write ladder are live in Akshar Lab. Phase A
+(Lipi/typing) and Phase C (word writing) still to come.
+**Date:** 2026-07-24
 **Origin:** feature request from the app's second real user (the owner's wife),
 after trying the app — *"there's no app that shows you exactly how to write the
 letters."* She's right. There isn't.

@@ -3,23 +3,39 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { VOWELS, CONSONANTS } from "@/lib/content";
+import { strokeGlyph } from "@/lib/content/strokes";
 import { useProgress } from "@/lib/client/useProgress";
-import { itemStatus } from "@/lib/core/progress";
+import { itemStatus, writingCardId } from "@/lib/core/progress";
 import AksharCard from "@/components/AksharCard";
 import BarakshariGrid from "@/components/BarakshariGrid";
 import AksharPractice from "@/components/AksharPractice";
+import WriteSession, { type WritableLetter } from "@/components/WriteSession";
 
 type Tab = "vowels" | "consonants" | "barakshari";
 
 const ALL_LETTERS = [...VOWELS, ...CONSONANTS];
 
+/** Letters someone has hand-authored stroke data for — the writing track's pool. */
+const WRITABLE: WritableLetter[] = ALL_LETTERS.flatMap((akshar) => {
+  const glyph = strokeGlyph(akshar.id);
+  return glyph && glyph.strokes.length > 0 ? [{ akshar, glyph }] : [];
+});
+
 export default function AksharLabPage() {
   const { progress, hydrated } = useProgress();
   const [tab, setTab] = useState<Tab>("vowels");
   const [practicing, setPracticing] = useState(false);
+  const [writing, setWriting] = useState(false);
 
   const knownCount = useMemo(
     () => (hydrated ? ALL_LETTERS.filter((a) => itemStatus(progress, a.id) === "known").length : 0),
+    [progress, hydrated],
+  );
+  const writtenCount = useMemo(
+    () =>
+      hydrated
+        ? WRITABLE.filter((l) => itemStatus(progress, writingCardId(l.akshar.id)) === "known").length
+        : 0,
     [progress, hydrated],
   );
 
@@ -27,6 +43,16 @@ export default function AksharLabPage() {
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-4 py-6 pb-24">
         <AksharPractice pool={ALL_LETTERS} onExit={() => setPracticing(false)} />
+      </div>
+    );
+  }
+
+  // Writing gets a wider shell than the rest of the app: the pad is the feature,
+  // and a phone-width canvas would undercut it on the iPad it's made for.
+  if (writing) {
+    return (
+      <div className="mx-auto flex min-h-dvh w-full max-w-[720px] flex-col px-4 py-6 pb-24">
+        <WriteSession pool={WRITABLE} onExit={() => setWriting(false)} />
       </div>
     );
   }
@@ -62,6 +88,36 @@ export default function AksharLabPage() {
           Practice letters →
         </button>
       </div>
+
+      {/* Writing — the other half of literacy. Reading a letter and being able to
+          form it are different skills, so they're tracked separately. */}
+      {WRITABLE.length > 0 && (
+        <div className="rounded-2xl border border-magenta/40 bg-magenta/10 p-4">
+          <div className="mb-3 flex items-baseline justify-between">
+            <span className="text-sm font-semibold text-ink">
+              {writtenCount} of {WRITABLE.length} letters you can write
+            </span>
+            <span className="text-xs text-ink-soft">by hand</span>
+          </div>
+          <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-surface-2">
+            <div
+              className="h-full rounded-full bg-magenta transition-[width]"
+              style={{ width: `${(writtenCount / WRITABLE.length) * 100}%` }}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setWriting(true)}
+            className="w-full rounded-full bg-magenta px-6 py-3 text-base font-semibold text-on-accent active:scale-[.99]"
+          >
+            ✍️ Learn to write →
+          </button>
+          <p className="mt-2 text-center text-xs text-ink-soft">
+            Watch it formed stroke by stroke, then trace it — works with a finger, best
+            with a Pencil.
+          </p>
+        </div>
+      )}
 
       <p className="text-sm text-ink-soft">
         Browse the script below — tap any letter for its shape→sound hint — then hit{" "}
