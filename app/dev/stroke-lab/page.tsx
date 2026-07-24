@@ -24,6 +24,7 @@ import {
   type WritingTarget,
 } from "@/lib/content/strokes";
 import StrokeAnimation, { Guides } from "@/components/StrokeAnimation";
+import StrokeGlyphPreview from "@/components/StrokeGlyphPreview";
 
 type Drafts = Record<string, Pt[][]>;
 
@@ -49,6 +50,7 @@ export default function StrokeLabPage() {
   const [drawing, setDrawing] = useState(false);
   const [penOnly, setPenOnly] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
   const [copied, setCopied] = useState(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
 
@@ -127,6 +129,10 @@ export default function StrokeLabPage() {
   const undo = () =>
     target && setDrafts((d) => ({ ...d, [target.id]: (d[target.id] ?? []).slice(0, -1) }));
   const clear = () => target && setDrafts((d) => ({ ...d, [target.id]: [] }));
+  /** Drop one stroke by index — so fixing stroke 2 of 5 doesn't mean redrawing all 5. */
+  const dropStroke = (i: number) =>
+    target &&
+    setDrafts((d) => ({ ...d, [target.id]: (d[target.id] ?? []).filter((_, j) => j !== i) }));
 
   function step(delta: number) {
     const all = WRITING_TARGETS;
@@ -178,6 +184,56 @@ export default function StrokeLabPage() {
         pen-down to pen-up = one stroke. This becomes what the app teaches.
       </p>
 
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => setReviewing((v) => !v)}
+          className={`w-full rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors ${
+            reviewing ? "border-peacock bg-peacock text-on-accent" : "border-line bg-surface text-ink"
+          }`}
+        >
+          {reviewing ? "← Back to drawing" : `🔍 Review all ${authoredCount} letters`}
+        </button>
+      </div>
+
+      {reviewing && (
+        <>
+          <p className="text-xs text-ink-soft">
+            Numbered dot = where each stroke starts · arrow = which way it went. Tap any
+            letter to fix it.
+          </p>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+            {WRITING_TARGETS.filter((t) => (drafts[t.id]?.length ?? 0) > 0).map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  setKind(t.kind);
+                  setTargetId(t.id);
+                  setReviewing(false);
+                  setPreviewing(false);
+                }}
+                className="rounded-xl border border-line bg-surface p-1 text-left"
+              >
+                <StrokeGlyphPreview
+                  strokes={drafts[t.id].map((points) => ({ points }))}
+                  ghostChar={t.display}
+                  className="aspect-square w-full"
+                />
+                <div className="flex items-baseline justify-between px-1 pb-1">
+                  <span className="guj text-lg">{t.display}</span>
+                  <span className="text-[10px] text-ink-soft">
+                    {drafts[t.id].length} stroke{drafts[t.id].length === 1 ? "" : "s"}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {!reviewing && (
+        <>
       {/* Kind filter */}
       <div className="flex gap-2 rounded-full border border-line bg-surface-2 p-1">
         {KINDS.map(([id, label]) => (
@@ -233,10 +289,13 @@ export default function StrokeLabPage() {
       <div className="flex flex-col items-center gap-3">
         <div className="text-center">
           <div className="guj text-3xl">{target.display}</div>
-          <div className="text-xs text-ink-soft">
-            {target.label}
-            {target.kind === "matra" && " — trace only the mark, not the ક"}
-          </div>
+          <div className="text-xs text-ink-soft">{target.label}</div>
+          {target.kind === "matra" && (
+            <div className="mx-auto mt-2 max-w-xs rounded-xl border border-marigold/40 bg-marigold/10 px-3 py-2 text-xs text-ink">
+              Trace <span className="font-semibold">only the {target.char} mark</span> — the ક
+              is there to show you where it sits, and is already captured.
+            </div>
+          )}
         </div>
 
         <div className="w-full max-w-[560px]">
@@ -334,6 +393,22 @@ export default function StrokeLabPage() {
           </Ctl>
         </div>
 
+        {/* Per-stroke list: fix stroke 2 of 5 without redrawing the other four. */}
+        {strokes.length > 0 && (
+          <div className="flex w-full max-w-[560px] flex-wrap justify-center gap-2">
+            {strokes.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => dropStroke(i)}
+                className="rounded-full border border-line bg-surface px-3 py-1.5 text-xs text-ink-soft"
+              >
+                stroke {i + 1} <span className="text-bad">✕</span>
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="flex w-full max-w-[560px] items-center gap-2">
           <Ctl onClick={() => step(-1)}>← Prev</Ctl>
           <span className="flex-1 text-center text-xs text-ink-soft">
@@ -342,6 +417,8 @@ export default function StrokeLabPage() {
           <Ctl onClick={() => step(1)}>Next →</Ctl>
         </div>
       </div>
+        </>
+      )}
 
       {/* Export */}
       <div className="mt-2 rounded-2xl border border-line bg-surface p-4">
