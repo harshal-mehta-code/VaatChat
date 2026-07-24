@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "gen:audio": "node --experimental-strip-types scripts/generate-audio.ts"
+    "gen:audio": "node --experimental-strip-types scripts/generate-audio.ts",
+    "check:audio": "node --experimental-strip-types scripts/check-audio.ts"
   },
   "dependencies": {
     "next": "15.1.11",

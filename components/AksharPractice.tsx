@@ -11,7 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Akshar } from "@/lib/core/types";
 import { useProgress } from "@/lib/client/useProgress";
 import { XP } from "@/lib/core/gamification";
-import { speak } from "@/lib/client/speech";
+import { playAudio } from "@/lib/client/speech";
 
 type Mode = "sound" | "letter" | "audio";
 
@@ -60,9 +60,9 @@ export default function AksharPractice({ pool, onExit }: { pool: Akshar[]; onExi
 
   const q = session[index];
 
-  // Auto-play the prompt for audio questions.
+  // Auto-play the prompt for audio questions (recorded file, TTS fallback).
   useEffect(() => {
-    if (q && q.mode === "audio") speak(q.target.char);
+    if (q && q.mode === "audio") void playAudio(q.target.audio, q.target.char);
   }, [q]);
 
   function choose(optId: string) {
@@ -170,7 +170,7 @@ export default function AksharPractice({ pool, onExit }: { pool: Akshar[]; onExi
         {q.mode === "audio" && (
           <button
             type="button"
-            onClick={() => speak(q.target.char)}
+            onClick={() => void playAudio(q.target.audio, q.target.char)}
             aria-label="Replay sound"
             className="flex h-16 w-16 items-center justify-center rounded-full bg-peacock text-2xl text-on-accent shadow-[var(--shadow)] active:scale-95"
           >

@@ -55,19 +55,33 @@ if (typeof window !== "undefined" && ttsSupported()) {
   }
 }
 
-// A single shared playback slot so a new sound always interrupts the previous
-// one (no overlapping audio when a button is tapped repeatedly).
-let currentAudio: HTMLAudioElement | null = null;
+// ─────────────────────────────────────────────────────────────────────────
+// Single-owner playback: at most one sound at a time, and a new request always
+// cleanly supersedes the previous one.
+//
+// `token` is what makes playback consistent. Every stopAudio() bumps it, so any
+// callback still holding an older token knows it has been superseded and bows
+// out silently — instead of (as a subtle earlier bug did) firing a stray TTS
+// fallback that stops the sound the *newer* request just started. That race was
+// exactly why a button tap sometimes played nothing: an in-flight autoplay's
+// rejected play() promise would stomp the tap's audio.
+// ─────────────────────────────────────────────────────────────────────────
 
-/** Stop whatever is currently playing — recorded audio and/or TTS. */
+let currentAudio: HTMLAudioElement | null = null;
+let token = 0;
+
+/** Stop whatever is playing (recorded audio and/or TTS) and invalidate any
+ *  in-flight playback callbacks. */
 export function stopAudio(): void {
+  token++;
   if (currentAudio) {
     try {
       currentAudio.pause();
-      currentAudio.currentTime = 0;
     } catch {
       /* noop */
     }
+    currentAudio.onended = null;
+    currentAudio.onerror = null;
     currentAudio = null;
   }
   if (ttsSupported()) {
@@ -79,46 +93,74 @@ export function stopAudio(): void {
   }
 }
 
-/** Speak Gujarati text via the browser. Returns false if TTS is unavailable. */
-export function speak(gujaratiText: string, rate = 0.85): boolean {
-  if (!ttsSupported()) return false;
-  stopAudio(); // interrupt anything already playing
-  const u = new SpeechSynthesisUtterance(gujaratiText);
+/** Dispatch a TTS utterance, but only if `myToken` is still the active request.
+ *  Assumes the caller already stopped previous playback. */
+function speakNow(text: string, myToken: number, rate: number): void {
+  if (!ttsSupported() || !text) return;
+  const u = new SpeechSynthesisUtterance(text);
   const v = pickGuVoice();
   if (v) u.voice = v;
   u.lang = v?.lang ?? "gu-IN";
   u.rate = rate;
   // A tiny defer avoids a Chrome/mobile quirk where speak() right after
   // cancel() silently drops the utterance.
-  window.setTimeout(() => window.speechSynthesis.speak(u), 30);
+  window.setTimeout(() => {
+    if (myToken !== token) return; // superseded — stay silent
+    try {
+      window.speechSynthesis.speak(u);
+    } catch {
+      /* noop */
+    }
+  }, 30);
+}
+
+/** Speak Gujarati text via the browser. Returns false if TTS is unavailable. */
+export function speak(gujaratiText: string, rate = 0.85): boolean {
+  if (!ttsSupported()) return false;
+  stopAudio(); // interrupt anything already playing
+  speakNow(gujaratiText, token, rate);
   return true;
 }
 
 /**
  * Play an item's audio: prefer the recorded file, fall back to TTS of the
- * Gujarati text. Resolves when playback starts (or TTS is dispatched).
+ * Gujarati text ONLY if the file genuinely can't play. Resolves when playback
+ * starts (or the fallback is dispatched). Safe to call rapidly — each call
+ * cleanly supersedes the last, so the last tap always wins.
  */
-export function playAudio(src: string | undefined, gujaratiFallback: string): Promise<void> {
+export function playAudio(
+  src: string | undefined,
+  gujaratiFallback: string,
+  rate = 0.85,
+): Promise<void> {
   return new Promise((resolve) => {
     stopAudio(); // interrupt any in-progress clip so nothing overlaps
-    if (src) {
-      const a = new Audio(src);
-      currentAudio = a;
-      a.onended = () => {
-        if (currentAudio === a) currentAudio = null;
-      };
-      a.play()
-        .then(() => resolve())
-        .catch(() => {
-          // File missing (placeholder) → TTS fallback.
-          if (currentAudio === a) currentAudio = null;
-          speak(gujaratiFallback);
-          resolve();
-        });
+    const myToken = token;
+    if (!src) {
+      speakNow(gujaratiFallback, myToken, rate);
+      resolve();
       return;
     }
-    speak(gujaratiFallback);
-    resolve();
+    const a = new Audio(src);
+    a.preload = "auto";
+    currentAudio = a;
+    a.onended = () => {
+      if (currentAudio === a) currentAudio = null;
+    };
+    a.play()
+      .then(() => resolve())
+      .catch(() => {
+        // A newer sound has taken over → this rejection is just our own
+        // interruption; do nothing (don't stomp the newer sound).
+        if (myToken !== token) {
+          resolve();
+          return;
+        }
+        // Genuine failure to play the file → fall back to TTS.
+        if (currentAudio === a) currentAudio = null;
+        speakNow(gujaratiFallback, myToken, rate);
+        resolve();
+      });
   });
 }
 
