@@ -20,6 +20,9 @@ import {
 export interface Progress {
   version: 1;
   createdAt: string;
+  /** Last local write (ISO). Used to settle scalar fields when merging two
+   *  devices — see lib/core/sync.ts. Absent on profiles saved before sync. */
+  updatedAt?: string;
   /** The learner's personal "why", e.g. "Hold a 2-min chat with Ba". */
   goal?: string;
   /** Chosen motivation bucket from onboarding. */
@@ -181,10 +184,10 @@ export function loadProgress(): Progress {
   }
 }
 
-export function saveProgress(p: Progress): void {
+export function saveProgress(p: Progress, now: Date = new Date()): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(p));
+    window.localStorage.setItem(KEY, JSON.stringify({ ...p, updatedAt: now.toISOString() }));
   } catch {
     /* storage full / disabled — non-fatal for a prototype */
   }
