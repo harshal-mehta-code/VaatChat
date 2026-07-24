@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { VOWELS, CONSONANTS } from "@/lib/content";
+import { VOWELS, CONSONANTS, TEACHABLE_CONSONANTS } from "@/lib/content";
 import { strokeGlyph } from "@/lib/content/strokes";
 import { useProgress } from "@/lib/client/useProgress";
 import { itemStatus, writingCardId } from "@/lib/core/progress";
@@ -14,6 +14,8 @@ import WriteSession, { type WritableLetter } from "@/components/WriteSession";
 type Tab = "vowels" | "consonants" | "barakshari";
 
 const ALL_LETTERS = [...VOWELS, ...CONSONANTS];
+/** ઙ and ઞ appear on the chart but never alone, so they stay out of drills. */
+const PRACTICE_LETTERS = [...VOWELS, ...TEACHABLE_CONSONANTS];
 
 /** Letters someone has hand-authored stroke data for — the writing track's pool. */
 const WRITABLE: WritableLetter[] = ALL_LETTERS.flatMap((akshar) => {
@@ -28,7 +30,10 @@ export default function AksharLabPage() {
   const [writing, setWriting] = useState(false);
 
   const knownCount = useMemo(
-    () => (hydrated ? ALL_LETTERS.filter((a) => itemStatus(progress, a.id) === "known").length : 0),
+    () =>
+      hydrated
+        ? PRACTICE_LETTERS.filter((a) => itemStatus(progress, a.id) === "known").length
+        : 0,
     [progress, hydrated],
   );
   const writtenCount = useMemo(
@@ -42,7 +47,7 @@ export default function AksharLabPage() {
   if (practicing) {
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-4 py-6 pb-24">
-        <AksharPractice pool={ALL_LETTERS} onExit={() => setPracticing(false)} />
+        <AksharPractice pool={PRACTICE_LETTERS} onExit={() => setPracticing(false)} />
       </div>
     );
   }
@@ -70,14 +75,14 @@ export default function AksharLabPage() {
       <div className="rounded-2xl border border-peacock/40 bg-peacock/10 p-4">
         <div className="mb-3 flex items-baseline justify-between">
           <span className="text-sm font-semibold text-ink">
-            {knownCount} of {ALL_LETTERS.length} letters known
+            {knownCount} of {PRACTICE_LETTERS.length} letters known
           </span>
           <span className="text-xs text-ink-soft">practice to master</span>
         </div>
         <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-surface-2">
           <div
             className="h-full rounded-full bg-peacock transition-[width]"
-            style={{ width: `${(knownCount / ALL_LETTERS.length) * 100}%` }}
+            style={{ width: `${(knownCount / PRACTICE_LETTERS.length) * 100}%` }}
           />
         </div>
         <button

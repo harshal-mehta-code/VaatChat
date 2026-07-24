@@ -112,6 +112,12 @@ export interface Akshar {
   /** Shape→sound mnemonic that makes the letter memorable (dual coding). */
   mnemonic: string;
   audio?: string;
+  /**
+   * Belongs on the alphabet chart, but never stands on its own in modern
+   * Gujarati — ઙ and ઞ only surface inside conjuncts. Shown for completeness,
+   * kept out of drills and the barakshari grid so practice stays useful.
+   */
+  rare?: boolean;
 }
 
 /** A barakshari cell: a consonant combined with a vowel matra. */
