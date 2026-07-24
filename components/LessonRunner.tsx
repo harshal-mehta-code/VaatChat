@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Exercise, LexItem, Lesson } from "@/lib/core/types";
 import type { Grade3 } from "@/lib/core/srs";
-import { ITEMS_BY_ID, UNITS_BY_ID } from "@/lib/content";
+import { ITEMS_BY_ID, UNITS_BY_ID, funFactFor } from "@/lib/content";
 import { XP } from "@/lib/core/gamification";
 import { useProgress } from "@/lib/client/useProgress";
 import { playAudio, listenOnce, sttSupported } from "@/lib/client/speech";
 import AudioButton from "./AudioButton";
+import FunFactCard from "./FunFactCard";
 import { seededShuffle } from "./shuffle";
 
 interface LessonRunnerProps {
@@ -52,6 +53,9 @@ export default function LessonRunner({ lesson }: LessonRunnerProps) {
         <p className="rounded-2xl border border-line bg-surface px-5 py-3 font-serif text-lg text-ink shadow-[var(--shadow)]">
           {progress.goal ?? "your goal"}
         </p>
+        <div className="mt-2 w-full">
+          <FunFactCard fact={funFactFor(progress.completedLessons.length)} />
+        </div>
         <div className="mt-4 flex w-full flex-col gap-3">
           {nextLesson && (
             <Link

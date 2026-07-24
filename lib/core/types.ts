@@ -208,6 +208,23 @@ export interface GrammarExercise {
   explain?: string;
 }
 
+/**
+ * A curiosity hook: pose a question and let the learner *commit a guess* before
+ * teaching. Predicting first — even wrongly — opens an "information gap" and
+ * primes memory (the pretesting / generation effect). Works when there's
+ * something to reason from (patterns, or connecting to the already-known).
+ */
+export interface CuriosityHook {
+  /** The curiosity question, in English. */
+  question: string;
+  /** Plausible answers to guess among (2–3). */
+  guesses: { text: string; roman?: string }[];
+  /** Index into `guesses` of the correct one. */
+  answerIndex: number;
+  /** One-line teaser shown after guessing, leading into the lesson. */
+  reveal: string;
+}
+
 /** A single grammar pattern — taught by discovery, drilled, and SRS-tracked. */
 export interface GrammarConcept {
   /** Stable slug. Used as an SRS item id with a "g-" prefix. */
@@ -218,6 +235,8 @@ export interface GrammarConcept {
   title: string;
   /** One-line "what you'll get". */
   blurb: string;
+  /** Optional curiosity hook shown before discovery (predict-then-reveal). */
+  hook?: CuriosityHook;
   discovery: {
     /** Framing line, e.g. "Notice what changes." */
     intro: string;
@@ -238,6 +257,19 @@ export interface GrammarModule {
   accent: "marigold" | "magenta" | "peacock";
   order: number;
   concepts: GrammarConcept[];
+}
+
+// ── Fun facts (the "big win" payoff — delight that also teaches) ────────────
+
+/** A short, delightful fact shown as a completion reward. Rotated so it stays a
+ *  surprise, and doubles as a bite-size extra learning moment. */
+export interface FunFact {
+  id: string;
+  emoji: string;
+  /** The delightful hook, 1–2 sentences. */
+  text: string;
+  /** Optional bonus language nugget tied to the fact. */
+  learn?: string;
 }
 
 // ── Rewards (kind, culturally-themed gamification) ─────────────────────────

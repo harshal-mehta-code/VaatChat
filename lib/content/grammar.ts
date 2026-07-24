@@ -35,6 +35,17 @@ export const GRAMMAR_MODULES: GrammarModule[] = [
         order: 1,
         title: "Words have a gender",
         blurb: "Masculine, feminine, or neuter — you can often hear it in the ending.",
+        hook: {
+          question:
+            "છોકરો is \"boy\" and છોકરી is \"girl.\" So what do you think \"child\" (neither one) ends with?",
+          guesses: [
+            { text: "છોકરો", roman: "‑o" },
+            { text: "છોકરી", roman: "‑i" },
+            { text: "છોકરું", roman: "‑u" },
+          ],
+          answerIndex: 2,
+          reveal: "Gujarati has a third gender — neuter — with its own ending. Let's see the pattern.",
+        },
         discovery: {
           intro: "Three closely-related words. Listen, and notice how only the ending changes.",
           examples: [
@@ -94,6 +105,17 @@ export const GRAMMAR_MODULES: GrammarModule[] = [
         order: 2,
         title: "\"My\" changes shape",
         blurb: "The word for \"my\" dresses to match what you own.",
+        hook: {
+          question:
+            "For \"my brother\" you say મારો ભાઈ. Since બહેન (\"sister\") is feminine, how do you think \"my\" changes for \"my sister\"?",
+          guesses: [
+            { text: "મારો", roman: "maaro" },
+            { text: "મારી", roman: "maari" },
+            { text: "It stays મારો", roman: "no change" },
+          ],
+          answerIndex: 1,
+          reveal: "\"My\" actually shifts to match the noun's gender. Here's the full pattern.",
+        },
         discovery: {
           intro: "The same \"my\", three times. Notice how its ending copies the noun's gender.",
           examples: [
@@ -153,6 +175,17 @@ export const GRAMMAR_MODULES: GrammarModule[] = [
         order: 3,
         title: "The verb goes last",
         blurb: "Gujarati saves the action for the end of the sentence.",
+        hook: {
+          question:
+            "In English you say \"I drink water\" — verb in the middle. Where do you think Gujarati puts the verb \"drink\"?",
+          guesses: [
+            { text: "In the middle, like English" },
+            { text: "Right at the end" },
+            { text: "At the very start" },
+          ],
+          answerIndex: 1,
+          reveal: "Gujarati is verb-final — the action lands last. Let's feel it.",
+        },
         discovery: {
           intro: "Read each with its literal, word-for-word English. Notice where the action word lands.",
           examples: [
@@ -205,6 +238,16 @@ export const GRAMMAR_MODULES: GrammarModule[] = [
         order: 4,
         title: "Two ways to say \"you\"",
         blurb: "તું for warmth, તમે for respect — it matters with family.",
+        hook: {
+          question:
+            "You greet a close friend with તું (\"you\"). Greeting your grandmother, do you think you'd use the same word?",
+          guesses: [
+            { text: "Yes — same word" },
+            { text: "No — a more respectful one" },
+          ],
+          answerIndex: 1,
+          reveal: "Elders get a respectful \"you.\" Here's how it works.",
+        },
         discovery: {
           intro: "The same question — \"How are you?\" — to two different people. Notice the \"you\" and the verb.",
           examples: [

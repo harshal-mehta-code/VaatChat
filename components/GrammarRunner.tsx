@@ -14,10 +14,12 @@ import { grammarCardId } from "@/lib/core/progress";
 import { XP } from "@/lib/core/gamification";
 import { useProgress } from "@/lib/client/useProgress";
 import { playAudio } from "@/lib/client/speech";
+import { funFactFor } from "@/lib/content";
 import AudioButton from "./AudioButton";
+import FunFactCard from "./FunFactCard";
 import { seededShuffle } from "./shuffle";
 
-type Phase = "discover" | "drill" | "done";
+type Phase = "predict" | "discover" | "drill" | "done";
 
 /** Render Gujarati with the pattern substring emphasized. */
 function Highlighted({ text, highlight }: { text: string; highlight?: string }) {
@@ -41,8 +43,9 @@ function scoreToGrade(correct: number, total: number): Grade3 {
 }
 
 export default function GrammarRunner({ concept }: { concept: GrammarConcept }) {
-  const { gradeItem, completeGrammar } = useProgress();
-  const [phase, setPhase] = useState<Phase>("discover");
+  const { progress, gradeItem, completeGrammar } = useProgress();
+  const [phase, setPhase] = useState<Phase>(() => (concept.hook ? "predict" : "discover"));
+  const [guess, setGuess] = useState<number | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [index, setIndex] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
@@ -64,6 +67,72 @@ export default function GrammarRunner({ concept }: { concept: GrammarConcept }) 
     } else {
       setIndex(index + 1);
     }
+  }
+
+  // ── Predict (curiosity hook) ─────────────────────────────────────────────
+  if (phase === "predict" && concept.hook) {
+    const hook = concept.hook;
+    const answered = guess !== null;
+    const gotIt = guess === hook.answerIndex;
+    return (
+      <div className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-5 py-6">
+        <div className="mb-5 flex items-center gap-3">
+          <Link href="/vyakaran" aria-label="Back to grammar" className="text-ink-soft">
+            <span aria-hidden="true">←</span>
+          </Link>
+          <h1 className="text-lg font-semibold text-ink">{concept.title}</h1>
+        </div>
+
+        <div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-marigold">
+          <span aria-hidden="true">💭</span> Take a guess
+        </div>
+        <p className="mb-6 text-lg font-medium leading-relaxed text-ink">{hook.question}</p>
+
+        <div className="flex flex-col gap-2">
+          {hook.guesses.map((g, i) => {
+            const show = answered;
+            const isThis = guess === i;
+            const isRight = i === hook.answerIndex;
+            return (
+              <button
+                key={i}
+                type="button"
+                disabled={answered}
+                onClick={() => setGuess(i)}
+                className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3.5 text-left transition-colors ${
+                  show && isRight
+                    ? "border-good bg-good/10"
+                    : show && isThis
+                      ? "border-bad bg-bad/10"
+                      : "border-line bg-surface hover:bg-surface-2"
+                }`}
+              >
+                <span className="guj text-lg font-medium text-ink">{g.text}</span>
+                {g.roman && <span className="text-sm text-ink-soft">{g.roman}</span>}
+              </button>
+            );
+          })}
+        </div>
+
+        {answered && (
+          <>
+            <div className="mt-5 rounded-2xl border border-marigold/40 bg-marigold/10 p-4 text-sm text-ink">
+              <span className="font-semibold">
+                {gotIt ? "Good instinct! " : "Interesting guess — "}
+              </span>
+              {hook.reveal}
+            </div>
+            <button
+              type="button"
+              onClick={() => setPhase("discover")}
+              className="mt-6 w-full rounded-full bg-peacock px-6 py-3.5 text-base font-semibold text-on-accent active:scale-[.99]"
+            >
+              See why →
+            </button>
+          </>
+        )}
+      </div>
+    );
   }
 
   // ── Discover ───────────────────────────────────────────────────────────
@@ -152,6 +221,9 @@ export default function GrammarRunner({ concept }: { concept: GrammarConcept }) 
         <p className="rounded-2xl border border-line bg-surface px-5 py-3 font-serif text-lg text-ink shadow-[var(--shadow)]">
           {concept.title}
         </p>
+        <div className="mt-2 w-full">
+          <FunFactCard fact={funFactFor(progress.completedGrammar.length + 3)} />
+        </div>
         <div className="mt-4 flex w-full flex-col gap-3">
           <Link
             href="/vyakaran"
