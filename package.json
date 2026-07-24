@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "gen:audio": "node --experimental-strip-types scripts/generate-audio.ts",
     "check:audio": "node --experimental-strip-types scripts/check-audio.ts",
+    "check:strokes": "node --experimental-strip-types scripts/check-strokes.ts",
     "gen:review": "node --experimental-strip-types scripts/gen-review-sheet.ts"
   },
   "dependencies": {

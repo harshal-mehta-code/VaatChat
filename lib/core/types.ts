@@ -123,6 +123,42 @@ export interface BarakshariCell {
   roman: string;
 }
 
+// ── Lekhan (handwriting) ───────────────────────────────────────────────────
+// Stroke data for teaching *how a letter is formed*: the order, the direction,
+// and the starting point — the parts a font can never show you. See
+// docs/LEKHAN.md. Authored by a native writer via /dev/stroke-lab.
+
+/** A point in glyph space. */
+export type Pt = [number, number];
+
+/**
+ * One pen-down → pen-up stroke, as a centerline polyline (not an outline):
+ * centerlines are what you can animate along, trace over, and score against.
+ *
+ * Coordinates live in a shared 1000×1000 em-box (`GLYPH_BOX`) with the glyph
+ * typeset identically for every letter — deliberately NOT normalized per-glyph,
+ * so relative size and position survive. That's what lets a matra be authored
+ * once and still land correctly on top of its consonant.
+ */
+export interface Stroke {
+  points: Pt[];
+  /** Optional coaching note for this stroke, e.g. "start at the top". */
+  hint?: string;
+}
+
+/** The full stroke recipe for one letter or matra. */
+export interface StrokeGlyph {
+  /** Akshar id ("c-ka") or matra id ("m-aa"). */
+  id: string;
+  /** The character(s) this draws — for a matra, the bare matra. */
+  char: string;
+  strokes: Stroke[];
+  /** Typeset advance width in em-box units, for laying letters on a baseline. */
+  advance?: number;
+  /** Who authored it + when — provenance matters for a source-of-truth asset. */
+  by?: string;
+}
+
 // ── Vaat Mode (scripted branching dialogue) ────────────────────────────────
 
 export interface DialogueChoice {
