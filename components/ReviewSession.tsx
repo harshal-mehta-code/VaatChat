@@ -51,7 +51,11 @@ function buildSession(pool: LexItem[]): Question[] {
 export default function ReviewSession({ pool, onExit }: { pool: LexItem[]; onExit: () => void }) {
   const { gradeItem, award } = useProgress();
   const [round, setRound] = useState(0);
-  const session = useMemo(() => buildSession(pool), [pool, round]);
+  // Freeze the deck at session start. Grading updates `progress`, which changes
+  // the parent-derived `pool` reference every answer — without this snapshot
+  // that would rebuild the session mid-question and mis-judge your selection.
+  const [poolSnapshot] = useState(pool);
+  const session = useMemo(() => buildSession(poolSnapshot), [poolSnapshot, round]);
 
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
