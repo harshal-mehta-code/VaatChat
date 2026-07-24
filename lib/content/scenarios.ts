@@ -5,7 +5,7 @@
 // pluggable provider (see lib/core/vaat.ts) lets us later swap in a free-tier
 // LLM for open-ended chat without touching the UI.
 //
-// ⚠️ DRAFT — lines & audio pending native verification.
+// ✅ Lines & audio native-verified by the owner (raised in Gujarat) on 2026-07-24.
 // ─────────────────────────────────────────────────────────────────────────
 
 import type { Scenario } from "../core/types";

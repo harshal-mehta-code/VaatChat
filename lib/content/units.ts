@@ -1,11 +1,10 @@
 // ─────────────────────────────────────────────────────────────────────────
 // Seeded content — Units 1 & 2 (A1, conversation-first).
 //
-// ⚠️ DRAFT CONTENT — pending native-speaker verification.
-// Gujarati script + romanization + audio all need a native review pass before
-// this ships. Romanization here is a friendly, readable scheme (not strict
-// IAST). Audio paths point at /public/audio/* placeholders until recordings
-// from the content team land.
+// ✅ Native-verified by the owner (a native Gujarati speaker, raised in Gujarat)
+// on 2026-07-24. Romanization uses a friendly, readable scheme (not strict
+// IAST). Audio is neural TTS (gu-IN Wavenet-A), reviewed and approved — human
+// voice-actor recordings can still replace it file-for-file later.
 // ─────────────────────────────────────────────────────────────────────────
 
 import type { Exercise, LexItem, Lesson, Unit } from "../core/types";
@@ -19,7 +18,7 @@ export const ITEMS: LexItem[] = [
   { id: "kem-cho", gujarati: "કેમ છો?", roman: "Kem cho?", english: "How are you?", register: "formal", audio: "/audio/kem-cho.mp3", tags: ["greeting", "u1"] },
   { id: "majama", gujarati: "મજામાં", roman: "Majaamã", english: "I'm well / Great", literal: "in-fun", audio: "/audio/majama.mp3", tags: ["greeting", "u1"] },
   { id: "namaste", gujarati: "નમસ્તે", roman: "Namaste", english: "Hello / greetings", audio: "/audio/namaste.mp3", tags: ["greeting", "u1"] },
-  { id: "jay-shri-krishna", gujarati: "જય શ્રી કૃષ્ણ", roman: "Jay Shri Krishna", english: "Traditional Gujarati greeting", note: "Warm, common among family & community.", audio: "/audio/jay-shri-krishna.mp3", tags: ["greeting", "u1"] },
+  { id: "jay-shri-krishna", gujarati: "જય શ્રી કૃષ્ણ", roman: "Jay Shri Krishna", english: "Traditional Gujarati greeting", literal: "victory to Lord Krishna", note: "A common religious greeting — literally 'Victory of Lord Krishna'. Warm among family & community.", audio: "/audio/jay-shri-krishna.mp3", tags: ["greeting", "u1"] },
   { id: "aabhaar", gujarati: "આભાર", roman: "Aabhaar", english: "Thank you", audio: "/audio/aabhaar.mp3", tags: ["greeting", "u1"] },
   { id: "ha", gujarati: "હા", roman: "Ha", english: "Yes", audio: "/audio/ha.mp3", tags: ["core", "u1"] },
   { id: "na", gujarati: "ના", roman: "Na", english: "No", audio: "/audio/na.mp3", tags: ["core", "u1"] },
@@ -32,7 +31,7 @@ export const ITEMS: LexItem[] = [
   { id: "mummy", gujarati: "મમ્મી", roman: "Mummy", english: "mom", audio: "/audio/mummy.mp3", tags: ["family", "u1"] },
   { id: "pappa", gujarati: "પપ્પા", roman: "Pappa", english: "dad", audio: "/audio/pappa.mp3", tags: ["family", "u1"] },
   { id: "bhai", gujarati: "ભાઈ", roman: "Bhai", english: "brother", audio: "/audio/bhai.mp3", tags: ["family", "u1"] },
-  { id: "ben", gujarati: "બહેન", roman: "Bahen", english: "sister", audio: "/audio/ben.mp3", tags: ["family", "u1"] },
+  { id: "ben", gujarati: "બહેન", roman: "Bahen", english: "sister", note: "Also pronounced 'Ben'.", audio: "/audio/ben.mp3", tags: ["family", "u1"] },
 
   // Unit 2 — Food & the Thali
   { id: "paani", gujarati: "પાણી", roman: "Paani", english: "water", audio: "/audio/paani.mp3", tags: ["food", "u2"] },
@@ -74,7 +73,7 @@ export const ITEMS: LexItem[] = [
   { id: "dandiya", gujarati: "દાંડિયા", roman: "Dandiya", english: "dance sticks", note: "The paired sticks tapped in raas-garba.", audio: "/audio/dandiya.mp3", tags: ["festival", "u4"] },
   { id: "diwali", gujarati: "દિવાળી", roman: "Diwaali", english: "Diwali", note: "The festival of lights.", audio: "/audio/diwali.mp3", tags: ["festival", "u4"] },
   { id: "rangoli", gujarati: "રંગોળી", roman: "Rangoli", english: "rangoli", note: "Colorful patterns drawn on the floor to welcome guests.", audio: "/audio/rangoli.mp3", tags: ["festival", "u4"] },
-  { id: "fataka", gujarati: "ફટાકા", roman: "Fataakaa", english: "firecrackers", audio: "/audio/fataka.mp3", tags: ["festival", "u4"] },
+  { id: "fataka", gujarati: "ફટાકડા", roman: "Fatakada", english: "firecrackers", audio: "/audio/fataka.mp3", tags: ["festival", "u4"] },
   { id: "mithai", gujarati: "મીઠાઈ", roman: "Mithaai", english: "sweets", audio: "/audio/mithai.mp3", tags: ["festival", "u4"] },
   { id: "saal-mubarak", gujarati: "સાલ મુબારક", roman: "Saal Mubaarak", english: "Happy New Year", note: "The Gujarati New Year greeting, the day after Diwali.", audio: "/audio/saal-mubarak.mp3", tags: ["festival", "u4"] },
   { id: "uttarayan", gujarati: "ઉત્તરાયણ", roman: "Uttaraayan", english: "Uttarayan (kite festival)", audio: "/audio/uttarayan.mp3", tags: ["festival", "u4"] },

@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 // Akshar Lab data — the Gujarati script, taught shape→sound.
 //
-// ⚠️ DRAFT — mnemonics & romanization pending native/pedagogy review.
+// ✅ Mnemonics & romanization native-verified by the owner (raised in Gujarat) on 2026-07-24.
 // MVP scope: the core vowels (swar) + a starter set of consonants (vyanjan),
 // plus a generated barakshari (consonant × vowel) grid — the drill Gujarati
 // kids grow up on, and our highest-leverage literacy tool.

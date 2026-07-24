@@ -1,12 +1,10 @@
 // ─────────────────────────────────────────────────────────────────────────
 // Vyakaran (grammar) content — Module 1: Foundations.
 //
-// ⚠️ DRAFT CONTENT — pending native-speaker verification.
-// Every sentence, gloss, romanization, and grammar explanation needs a native
-// + light pedagogy review before this ships. Romanization uses the app's
-// friendly scheme (not strict IAST). Example audio flows through the same
-// generator as the rest of the app (scripts/generate-audio.ts); until those
-// files exist, playback falls back to browser TTS.
+// ✅ Native-verified by the owner (native Gujarati speaker, raised in Gujarat)
+// on 2026-07-24 — sentences, glosses, romanization, and rules. Romanization
+// uses the app's friendly scheme (not strict IAST); example audio flows through
+// the same neural-TTS generator (scripts/generate-audio.ts) as the rest of the app.
 //
 // Design: guided discovery → tiny explicit rule → production drills, all
 // SRS-tracked. See docs/VYAKARAN.md.

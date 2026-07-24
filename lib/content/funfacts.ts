@@ -4,8 +4,8 @@
 // culture. Rotated (not random) so every completion feels fresh, and shown at
 // milestones rather than every single time so the reward never goes stale.
 //
-// ⚠️ DRAFT — pending native/cultural review, but kept to safe, well-known facts
-// (no invented statistics).
+// ✅ Native/cultural-reviewed by the owner (raised in Gujarat) on 2026-07-24;
+// kept to safe, well-known facts (no invented statistics).
 // ─────────────────────────────────────────────────────────────────────────
 
 import type { FunFact } from "../core/types";

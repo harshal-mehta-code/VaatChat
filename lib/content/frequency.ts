@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 // The "most useful words" bank — a frequency-ranked core vocabulary.
 //
-// ⚠️ DRAFT CONTENT — pending native-speaker verification.
+// ✅ Native-verified by the owner (native Gujarati speaker, raised in Gujarat) on 2026-07-24.
 // These are the high-frequency function/utility words (pronouns, everyday
 // verbs, connectors, quantifiers, time & place) that the themed units don't
 // dwell on but that appear in almost every real sentence. Learning them pays

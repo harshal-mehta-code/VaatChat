@@ -179,7 +179,7 @@ const html = `<!doctype html>
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>VaatChat — Content Review Sheet (DRAFT)</title>
+<title>VaatChat — Content Review Sheet</title>
 <style>
   :root { color-scheme: light dark; }
   * { box-sizing: border-box; }
@@ -217,7 +217,7 @@ const html = `<!doctype html>
 <body>
   <h1>VaatChat — Content Review Sheet</h1>
   <div class="banner">
-    <strong>⚠️ DRAFT — everything here is an AI-drafted first pass.</strong>
+    <strong>Content check.</strong>
     Play each clip and read each line. Tap <strong>✓</strong> if it's correct, <strong>✗</strong> if the
     Gujarati, romanization, meaning, or audio needs fixing — and type the fix in the note box.
     Your marks are saved in this browser. When done, hit <em>“Copy all issues”</em> and paste them back.
