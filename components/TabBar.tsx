@@ -18,7 +18,9 @@ interface Tab {
 }
 
 const TABS: Tab[] = [
-  { href: "/", label: "Learn", icon: "🪔", match: (p) => p === "/" },
+  // The journey belongs to Learn: it's reached from the home screen and it's
+  // the answer to "how far am I", not a place to practise.
+  { href: "/", label: "Learn", icon: "🪔", match: (p) => p === "/" || p.startsWith("/journey") },
   { href: "/review", label: "Review", icon: "🔁", match: (p) => p.startsWith("/review") },
   {
     href: "/explore",

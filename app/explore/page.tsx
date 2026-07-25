@@ -11,7 +11,7 @@ const MODES = [
     href: "/akshar",
     guj: "અક્ષર",
     title: "Akshar Lab",
-    blurb: "Read it, write whole words by hand, type it",
+    blurb: "Read it, write it by hand, type it — and the barakshari grid",
     emoji: "📝",
     ring: "border-peacock/40 bg-peacock/10 hover:bg-peacock/15",
     chev: "text-peacock",

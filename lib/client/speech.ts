@@ -69,11 +69,18 @@ if (typeof window !== "undefined" && ttsSupported()) {
 
 let currentAudio: HTMLAudioElement | null = null;
 let token = 0;
+/** Resolves the pending playAudioToEnd promise, if any. Interrupting a clip
+ *  has to settle it — otherwise a sequence waits forever for an `ended` event
+ *  that stopAudio() just unhooked. */
+let releaseEnd: (() => void) | null = null;
 
 /** Stop whatever is playing (recorded audio and/or TTS) and invalidate any
  *  in-flight playback callbacks. */
 export function stopAudio(): void {
   token++;
+  const release = releaseEnd;
+  releaseEnd = null;
+  release?.();
   if (currentAudio) {
     try {
       currentAudio.pause();
@@ -133,22 +140,65 @@ export function playAudio(
   gujaratiFallback: string,
   rate = 0.85,
 ): Promise<void> {
+  return play(src, gujaratiFallback, rate, false);
+}
+
+/**
+ * Like `playAudio`, but resolves when the clip *finishes*.
+ *
+ * The difference matters exactly once: playing a run of clips back to back
+ * (the barakshari chant). Pacing that off "playback started" makes every
+ * syllable talk over the one before it, and pacing it off a fixed timer means
+ * guessing a duration we already know precisely.
+ *
+ * Superseded playback resolves immediately rather than hanging — a sequence
+ * that got interrupted should notice and stop, not wait for a clip that will
+ * never end.
+ */
+export function playAudioToEnd(
+  src: string | undefined,
+  gujaratiFallback: string,
+  rate = 0.85,
+): Promise<void> {
+  return play(src, gujaratiFallback, rate, true);
+}
+
+/** Rough speaking time for the TTS path, which gives us no completion event we
+ *  can rely on across browsers. Deliberately generous. */
+function spokenMs(text: string, rate: number): number {
+  return Math.max(600, (text.length * 170) / Math.max(0.1, rate));
+}
+
+function play(
+  src: string | undefined,
+  gujaratiFallback: string,
+  rate: number,
+  untilEnd: boolean,
+): Promise<void> {
   return new Promise((resolve) => {
     stopAudio(); // interrupt any in-progress clip so nothing overlaps
     const myToken = token;
     if (!src) {
       speakNow(gujaratiFallback, myToken, rate);
-      resolve();
+      if (untilEnd) window.setTimeout(resolve, spokenMs(gujaratiFallback, rate));
+      else resolve();
       return;
     }
     const a = new Audio(src);
     a.preload = "auto";
     currentAudio = a;
+    if (untilEnd) releaseEnd = resolve;
     a.onended = () => {
       if (currentAudio === a) currentAudio = null;
+      if (untilEnd) {
+        releaseEnd = null;
+        resolve();
+      }
     };
     a.play()
-      .then(() => resolve())
+      .then(() => {
+        if (!untilEnd) resolve();
+      })
       .catch(() => {
         // A newer sound has taken over → this rejection is just our own
         // interruption; do nothing (don't stomp the newer sound).
@@ -159,7 +209,8 @@ export function playAudio(
         // Genuine failure to play the file → fall back to TTS.
         if (currentAudio === a) currentAudio = null;
         speakNow(gujaratiFallback, myToken, rate);
-        resolve();
+        if (untilEnd) window.setTimeout(resolve, spokenMs(gujaratiFallback, rate));
+        else resolve();
       });
   });
 }

@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   VOWELS,
-  CONSONANTS,
   TEACHABLE_CONSONANTS,
   ITEMS,
   barakshariGrid,
@@ -12,18 +11,14 @@ import {
 } from "@/lib/content";
 import { strokeGlyph, composeGujarati } from "@/lib/content/strokes";
 import { useProgress } from "@/lib/client/useProgress";
-import { itemStatus, statusCounts, writingCardId } from "@/lib/core/progress";
+import { statusCounts, writingCardId, type StatusCounts } from "@/lib/core/progress";
 import { acceptsTyped } from "@/lib/core/translit";
-import AksharCard from "@/components/AksharCard";
-import BarakshariGrid from "@/components/BarakshariGrid";
 import AksharPractice from "@/components/AksharPractice";
 import WriteSession, { type WritePools, type WriteTarget } from "@/components/WriteSession";
 import TypeSession, { type TypePools } from "@/components/TypeSession";
 import MasteryBar from "@/components/MasteryBar";
+import { nextScriptSkill, type ScriptSkill } from "@/lib/core/progression";
 
-type Tab = "vowels" | "consonants" | "barakshari";
-
-const ALL_LETTERS = [...VOWELS, ...CONSONANTS];
 /** ઙ and ઞ appear on the chart but never alone, so they stay out of drills. */
 const PRACTICE_LETTERS = [...VOWELS, ...TEACHABLE_CONSONANTS];
 
@@ -76,7 +71,6 @@ const TYPABLE_WORDS = ITEMS.filter((i) => acceptsTyped(i.gujarati, i.roman));
 
 export default function AksharLabPage() {
   const { progress, hydrated } = useProgress();
-  const [tab, setTab] = useState<Tab>("vowels");
   const [practicing, setPracticing] = useState(false);
   const [writing, setWriting] = useState(false);
   const [typing, setTyping] = useState(false);
@@ -158,6 +152,18 @@ export default function AksharLabPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [poolKey]);
 
+  // Which of the three to lead with. Advisory — all three are one tap away.
+  const skill = nextScriptSkill({
+    read: readCounts.known,
+    write: writeCounts.known,
+    total: PRACTICE_LETTERS.length,
+  });
+  const start: Record<ScriptSkill, () => void> = {
+    read: () => setPracticing(true),
+    write: () => setWriting(true),
+    type: () => setTyping(true),
+  };
+
   if (practicing) {
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-4 py-6 pb-24">
@@ -193,125 +199,184 @@ export default function AksharLabPage() {
         <h1 className="guj text-2xl">અક્ષર Lab</h1>
       </div>
 
-      {/* Practice CTA + mastery summary */}
-      <div className="rounded-2xl border border-peacock/40 bg-peacock/10 p-4">
+      {/* One recommended action, then everything else quietly.
+
+          This page used to open with three saturated panels stacked — practice,
+          write, type — in three different accent colours, all shouting equally.
+          For someone who knows zero letters, "learn to write" and "learn to
+          type" aren't choices, they're noise; and the three skills are
+          genuinely sequential anyway (lib/core/progression.ts). So: the one
+          worth doing now, big. The other two, small, with their numbers. */}
+      <HeroSkill
+        skill={skill}
+        readCounts={readCounts}
+        writeCounts={writeCounts}
+        onStart={start[skill]}
+      />
+
+      <div className="flex flex-col gap-2">
+        {(["read", "write", "type"] as ScriptSkill[])
+          .filter((s) => s !== skill)
+          .map((s) => (
+            <SecondarySkill
+              key={s}
+              skill={s}
+              readCounts={readCounts}
+              writeCounts={writeCounts}
+              wordsWritten={wordsWritten}
+              onStart={start[s]}
+            />
+          ))}
+      </div>
+
+      <Link
+        href="/akshar/chart"
+        className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3.5 transition-colors hover:bg-surface-2"
+      >
+        <span className="text-xl" aria-hidden="true">
+          📖
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="text-sm font-medium text-ink">Browse the script</span>
+          <span className="text-xs text-ink-soft">
+            All {PRACTICE_LETTERS.length} letters, and the barakshari grid
+          </span>
+        </span>
+        <span className="text-ink-soft" aria-hidden="true">
+          ›
+        </span>
+      </Link>
+    </div>
+  );
+}
+
+// ── The three skills, described once ──────────────────────────────────────
+
+const SKILL: Record<
+  ScriptSkill,
+  { emoji: string; verb: string; accent: "peacock" | "magenta" | "marigold"; blurb: string }
+> = {
+  read: {
+    emoji: "👀",
+    verb: "Practice letters",
+    accent: "peacock",
+    blurb: "See a letter, know its sound — the foundation everything else sits on.",
+  },
+  write: {
+    emoji: "✍️",
+    verb: "Learn to write",
+    accent: "magenta",
+    blurb:
+      "Watch it formed stroke by stroke, then trace it. Works with a finger, best with a Pencil.",
+  },
+  type: {
+    emoji: "⌨️",
+    verb: "Learn to type",
+    accent: "marigold",
+    blurb:
+      "Gujarati keyboards are phonetic — type kem cho, get કેમ છો. The fastest route to texting the family group.",
+  },
+};
+
+const BORDER = {
+  peacock: "border-peacock/40 bg-peacock/10",
+  magenta: "border-magenta/40 bg-magenta/10",
+  marigold: "border-marigold/40 bg-marigold/10",
+} as const;
+const BUTTON = {
+  peacock: "bg-peacock",
+  magenta: "bg-magenta",
+  marigold: "bg-marigold",
+} as const;
+
+/** A brand-new learner should see one button, not a menu. */
+function HeroSkill({
+  skill,
+  readCounts,
+  writeCounts,
+  onStart,
+}: {
+  skill: ScriptSkill;
+  readCounts: StatusCounts;
+  writeCounts: StatusCounts;
+  onStart: () => void;
+}) {
+  const meta = SKILL[skill];
+  const fresh = readCounts.known === 0 && readCounts.learning === 0;
+
+  return (
+    <div className={`rounded-2xl border p-4 ${BORDER[meta.accent]}`}>
+      {/* No bar at all before there's anything to show — a progress bar reading
+          zero is a worse first impression than no bar. */}
+      {!fresh && skill === "read" && (
         <MasteryBar
           counts={readCounts}
           total={PRACTICE_LETTERS.length}
           accent="peacock"
           noun="letters known"
         />
-        <button
-          type="button"
-          onClick={() => setPracticing(true)}
-          className="w-full rounded-full bg-peacock px-6 py-3 text-base font-semibold text-on-accent active:scale-[.99]"
-        >
-          Practice letters →
-        </button>
-      </div>
-
-      {/* Writing — the other half of literacy. Reading a letter and being able to
-          form it are different skills, so they're tracked separately. */}
-      {WRITABLE.length > 0 && (
-        <div className="rounded-2xl border border-magenta/40 bg-magenta/10 p-4">
-          <MasteryBar
-            counts={writeCounts}
-            total={WRITABLE.length}
-            accent="magenta"
-            noun="letters you can write"
-          />
-          <button
-            type="button"
-            onClick={() => setWriting(true)}
-            className="w-full rounded-full bg-magenta px-6 py-3 text-base font-semibold text-on-accent active:scale-[.99]"
-          >
-            ✍️ Learn to write →
-          </button>
-          <p className="mt-2 text-center text-xs text-ink-soft">
-            Watch it formed stroke by stroke, then trace it — works with a finger, best
-            with a Pencil. Once a word&apos;s letters are steady, you&apos;ll write the
-            whole word: matras, spacing, and the{" "}
-            <span className="guj text-ink">િ</span> that appears on the left but is
-            written second.
-          </p>
-          {wordsWritten > 0 && (
-            <p className="mt-1.5 text-center text-xs font-medium text-magenta">
-              {wordsWritten} whole {wordsWritten === 1 ? "word" : "words"} written by hand
-            </p>
-          )}
-        </div>
       )}
-
-      {/* Typing — the third skill, and the one with a same-week payoff. No
-          mastery bar of its own on purpose: typing grades the letter's own
-          card, because it's a harder direction on the same knowledge rather
-          than a separate memory (docs/LEKHAN.md §4). */}
-      <div className="rounded-2xl border border-marigold/40 bg-marigold/10 p-4">
-        <p className="mb-1 text-base font-semibold text-ink">Type it on your phone</p>
-        <p className="mb-3 text-sm text-ink-soft">
-          Gujarati keyboards are phonetic — type <span className="font-mono text-ink">kem cho</span>,
-          get <span className="guj text-base text-ink">કેમ છો</span>. The fastest route to texting
-          the family group in Gujarati.
-        </p>
-        <button
-          type="button"
-          onClick={() => setTyping(true)}
-          className="w-full rounded-full bg-marigold px-6 py-3 text-base font-semibold text-on-accent active:scale-[.99]"
-        >
-          ⌨️ Learn to type →
-        </button>
-      </div>
-
-      <p className="text-sm text-ink-soft">
-        Browse the script below — tap any letter for its shape→sound hint — then hit{" "}
-        <span className="font-medium text-ink">Practice</span> to lock it into memory.
-      </p>
-
-      <div className="flex gap-2 rounded-full border border-line bg-surface-2 p-1">
-        {(
-          [
-            ["vowels", "Vowels"],
-            ["consonants", "Consonants"],
-            ["barakshari", "Barakshari"],
-          ] as [Tab, string][]
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setTab(id)}
-            className={`flex-1 rounded-full px-3 py-2 text-sm font-medium transition-colors ${
-              tab === id ? "bg-peacock text-on-accent" : "text-ink-soft hover:bg-surface"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {tab === "vowels" && (
-        <div className="grid grid-cols-2 gap-3">
-          {VOWELS.map((v) => (
-            <AksharCard key={v.id} akshar={v} status={hydrated ? itemStatus(progress, v.id) : "new"} />
-          ))}
-        </div>
+      {!fresh && skill === "write" && (
+        <MasteryBar
+          counts={writeCounts}
+          total={WRITABLE.length}
+          accent="magenta"
+          noun="letters you can write"
+        />
       )}
-
-      {tab === "consonants" && (
-        <div className="grid grid-cols-2 gap-3">
-          {CONSONANTS.map((c) => (
-            <AksharCard key={c.id} akshar={c} status={hydrated ? itemStatus(progress, c.id) : "new"} />
-          ))}
-        </div>
-      )}
-
-      {tab === "barakshari" && (
-        <div className="flex flex-col gap-2">
-          <p className="text-xs text-ink-soft">
-            Tap any cell to hear it. Scroll sideways to see every vowel form.
-          </p>
-          <BarakshariGrid />
-        </div>
-      )}
+      <p className="mb-3 text-sm text-ink-soft">{fresh ? "Start here." : meta.blurb}</p>
+      <button
+        type="button"
+        onClick={onStart}
+        className={`w-full rounded-full px-6 py-3 text-base font-semibold text-on-accent active:scale-[.99] ${BUTTON[meta.accent]}`}
+      >
+        {meta.emoji} {fresh ? "Meet your first letters" : meta.verb} →
+      </button>
     </div>
+  );
+}
+
+/** The other two: available, obviously, but not competing for attention. */
+function SecondarySkill({
+  skill,
+  readCounts,
+  writeCounts,
+  wordsWritten,
+  onStart,
+}: {
+  skill: ScriptSkill;
+  readCounts: StatusCounts;
+  writeCounts: StatusCounts;
+  wordsWritten: number;
+  onStart: () => void;
+}) {
+  const meta = SKILL[skill];
+  // Typing deliberately has no count of its own: it grades the letter's
+  // existing card rather than keeping a second memory (docs/LEKHAN.md §4).
+  const detail =
+    skill === "read"
+      ? `${readCounts.known} of ${PRACTICE_LETTERS.length} letters known`
+      : skill === "write"
+        ? `${writeCounts.known} of ${WRITABLE.length} by hand` +
+          (wordsWritten > 0 ? ` · ${wordsWritten} whole ${wordsWritten === 1 ? "word" : "words"}` : "")
+        : "Type it on your phone";
+
+  return (
+    <button
+      type="button"
+      onClick={onStart}
+      className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3.5 text-left transition-colors hover:bg-surface-2"
+    >
+      <span className="text-xl" aria-hidden="true">
+        {meta.emoji}
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="text-sm font-medium text-ink">{meta.verb}</span>
+        <span className="text-xs text-ink-soft">{detail}</span>
+      </span>
+      <span className="text-ink-soft" aria-hidden="true">
+        ›
+      </span>
+    </button>
   );
 }

@@ -65,6 +65,45 @@ export function conceptUnlocked(
   return progress.completedGrammar.includes(path[i - 1].id);
 }
 
+// ── Akshar Lab: which script skill to put in front of them ────────────────
+
+/** Reading, forming by hand, typing. Three skills over one alphabet. */
+export type ScriptSkill = "read" | "write" | "type";
+
+export interface ScriptCounts {
+  /** Letters recognised on sight. */
+  read: number;
+  /** Letters they can form by hand. */
+  write: number;
+  /** Letters that exist to be read. */
+  total: number;
+}
+
+/** Letters to recognise before forming one by hand is worth the effort. */
+const READ_BEFORE_WRITE = 5;
+/** How far writing may trail reading before it's the thing to do next. */
+const WRITE_LAG = 6;
+
+/**
+ * The one script skill to recommend right now.
+ *
+ * Akshar Lab used to present all three as equal, saturated, side-by-side
+ * choices — and for someone who knows zero letters, "learn to write" and "learn
+ * to type" aren't choices, they're noise. They're also genuinely sequential:
+ * you can't form a letter you can't recognise, and typing is a harder direction
+ * on the same knowledge (docs/LEKHAN.md §4).
+ *
+ * So: read until there's something to work with, then whichever of writing and
+ * typing has fallen behind. Advisory, like everything in this file — all three
+ * stay one tap away.
+ */
+export function nextScriptSkill(counts: ScriptCounts): ScriptSkill {
+  if (counts.read < READ_BEFORE_WRITE) return "read";
+  if (counts.write + WRITE_LAG < counts.read) return "write";
+  if (counts.read < counts.total) return "read";
+  return "type";
+}
+
 /** The next grammar concept to work through. */
 export function nextConcept(
   modules: GrammarModule[],
