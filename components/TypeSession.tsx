@@ -26,6 +26,7 @@ import { itemStatus } from "@/lib/core/progress";
 import { XP } from "@/lib/core/gamification";
 import { playAudio } from "@/lib/client/speech";
 import { barakshariAudioPath } from "@/lib/content/audio-paths";
+import { shuffled } from "@/lib/core/variation";
 import {
   segmentGujarati,
   matchTyped,
@@ -60,15 +61,6 @@ interface Question {
   rivals?: string[];
 }
 
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
 export interface TypePools {
   letters: Akshar[];
   syllables: BarakshariCell[];
@@ -85,11 +77,12 @@ function buildSession(
   rungFor: (akshar: Akshar) => Rung,
   knownLetters: number,
 ): Question[] {
-  const letterQs: Question[] = shuffle(pools.letters).map((a, i) => {
+  const letterQs: Question[] = shuffled(pools.letters, Math.random).map((a, i) => {
     const rung = rungFor(a);
     const answer = typedCanonical(a.char);
-    const distractors = shuffle(
+    const distractors = shuffled(
       pools.letters.filter((o) => o.id !== a.id && typedCanonical(o.char) !== answer),
+      Math.random,
     )
       .slice(0, 3)
       .map((o) => typedCanonical(o.char));
@@ -101,7 +94,7 @@ function buildSession(
       roman: a.roman,
       audio: a.audio,
       cardIds: [a.id],
-      options: rung === "match" || rung === "hear" ? shuffle([answer, ...distractors]) : undefined,
+      options: rung === "match" || rung === "hear" ? shuffled([answer, ...distractors], Math.random) : undefined,
       rivals: typedRivals(a.char),
     };
   });
@@ -110,7 +103,7 @@ function buildSession(
   // they're just noise. Two per session: enough to make vowel length land.
   const syllableQs: Question[] =
     knownLetters >= 6
-      ? shuffle(pools.syllables)
+      ? shuffled(pools.syllables, Math.random)
           .slice(0, 2)
           .map((c, i) => ({
             key: `${c.consonantId}-${c.vowelId}-${i}`,
@@ -125,7 +118,7 @@ function buildSession(
       : [];
 
   // The real-world payoff, and the emotional beat of the whole track.
-  const wordQs: Question[] = shuffle(pools.words)
+  const wordQs: Question[] = shuffled(pools.words, Math.random)
     .slice(0, knownLetters >= 6 ? 2 : 1)
     .map((w, i) => ({
       key: `${w.id}-${i}`,
@@ -234,7 +227,7 @@ export default function TypeSession({ pools, onExit }: { pools: TypePools; onExi
   const match = useMemo(() => matchTyped(clusters, input), [clusters, input]);
   // Shuffled once per question — re-rolling on every keystroke would make the
   // candidates jump around under her thumb.
-  const candidates = useMemo(() => (q ? shuffle([q.guj, ...(q.rivals ?? [])]) : []), [q]);
+  const candidates = useMemo(() => (q ? shuffled([q.guj, ...(q.rivals ?? [])], Math.random) : []), [q]);
 
   // Autoplay the prompt when the sound *is* the prompt.
   useEffect(() => {

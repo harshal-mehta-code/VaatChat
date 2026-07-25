@@ -11,6 +11,7 @@ import { useProgress } from "@/lib/client/useProgress";
 import { XP } from "@/lib/core/gamification";
 import { playAudio } from "@/lib/client/speech";
 import { ITEMS } from "@/lib/content/units";
+import { shuffled } from "@/lib/core/variation";
 import AudioButton from "./AudioButton";
 
 interface Question {
@@ -21,29 +22,21 @@ interface Question {
 
 const SESSION_SIZE = 10;
 
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
 function buildSession(pool: LexItem[]): Question[] {
   // Fall back to the full item bank for distractors when the pool itself is
   // too small to offer three other meanings.
   const distractorBank = pool.length > 3 ? pool : ITEMS;
-  return shuffle(pool)
+  return shuffled(pool, Math.random)
     .slice(0, Math.min(SESSION_SIZE, pool.length))
     .map((target, i) => {
-      const distractors = shuffle(
+      const distractors = shuffled(
         distractorBank.filter((it) => it.id !== target.id && it.english !== target.english),
+        Math.random,
       ).slice(0, 3);
       return {
         id: `${target.id}-${i}`,
         target,
-        options: shuffle([target, ...distractors]),
+        options: shuffled([target, ...distractors], Math.random),
       };
     });
 }

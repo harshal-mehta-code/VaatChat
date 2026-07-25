@@ -6,7 +6,7 @@
 // the end (spaced review, not massed) and awards XP. See docs/VYAKARAN.md.
 // ─────────────────────────────────────────────────────────────────────────
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { GrammarConcept, GrammarExample, GrammarExercise } from "@/lib/core/types";
 import type { Grade3 } from "@/lib/core/srs";
@@ -17,7 +17,7 @@ import { playAudio } from "@/lib/client/speech";
 import { funFactFor } from "@/lib/content";
 import AudioButton from "./AudioButton";
 import FunFactCard from "./FunFactCard";
-import { seededShuffle } from "./shuffle";
+import { makeRng, newSeed, seededShuffle, shuffled } from "@/lib/core/variation";
 
 type Phase = "predict" | "discover" | "drill" | "done";
 
@@ -50,7 +50,14 @@ export default function GrammarRunner({ concept }: { concept: GrammarConcept }) 
   const [index, setIndex] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
 
-  const exercises = concept.exercises;
+  // One seed per sitting — see lib/core/variation.ts. Drills for a concept all
+  // test the same rule, so their order carries no pedagogy and is free to vary;
+  // what must not vary mid-question is where the right answer sits.
+  const [seed] = useState(newSeed);
+  const exercises = useMemo(
+    () => shuffled(concept.exercises, makeRng(seed)),
+    [concept.exercises, seed],
+  );
   const total = exercises.length;
 
   function finishDrills(finalCorrect: number) {
@@ -262,9 +269,19 @@ export default function GrammarRunner({ concept }: { concept: GrammarConcept }) 
       </div>
 
       {exercise.kind === "build" ? (
-        <BuildDrill key={exercise.id} exercise={exercise} onAnswered={handleAnswered} />
+        <BuildDrill
+          key={exercise.id}
+          exercise={exercise}
+          optionSeed={`${seed}:${exercise.id}`}
+          onAnswered={handleAnswered}
+        />
       ) : (
-        <ChooseDrill key={exercise.id} exercise={exercise} onAnswered={handleAnswered} />
+        <ChooseDrill
+          key={exercise.id}
+          exercise={exercise}
+          optionSeed={`${seed}:${exercise.id}`}
+          onAnswered={handleAnswered}
+        />
       )}
     </div>
   );
@@ -274,12 +291,15 @@ export default function GrammarRunner({ concept }: { concept: GrammarConcept }) 
 
 function ChooseDrill({
   exercise,
+  optionSeed,
   onAnswered,
 }: {
   exercise: GrammarExercise;
+  /** Seeds the option order: stable while answering, new next sitting. */
+  optionSeed: string;
   onAnswered: (correct: boolean) => void;
 }) {
-  const options = seededShuffle(exercise.options ?? [], exercise.id);
+  const options = seededShuffle(exercise.options ?? [], optionSeed);
   const [picked, setPicked] = useState<number | null>(null);
   const answered = picked !== null;
   // `picked` indexes the shuffled `options`, so read correctness from there.
@@ -351,9 +371,12 @@ function ChooseDrill({
 
 function BuildDrill({
   exercise,
+  optionSeed,
   onAnswered,
 }: {
   exercise: GrammarExercise;
+  /** Seeds the option order: stable while answering, new next sitting. */
+  optionSeed: string;
   onAnswered: (correct: boolean) => void;
 }) {
   const answer = exercise.answer ?? [];
@@ -361,7 +384,7 @@ function BuildDrill({
   // Tiles carry their correct position so we can compare regardless of shuffle.
   const tiles = seededShuffle(
     answer.map((token, i) => ({ token, roman: roman[i], pos: i })),
-    exercise.id,
+    optionSeed,
   );
 
   const [placed, setPlaced] = useState<number[]>([]); // indices into `tiles`

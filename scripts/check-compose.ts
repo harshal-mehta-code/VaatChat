@@ -65,7 +65,6 @@ function compose(text: string): ComposedWord | null {
     segmentGujarati(word),
     (char) => GLYPH_BY_CHAR[char],
     BASE,
-    GLYPH_BOX,
   );
 }
 

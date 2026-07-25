@@ -70,6 +70,14 @@ That's a more honest mastery bar than we have now, and it makes the existing
 tab bar comment in `components/TabBar.tsx` warns against "a dozen places to
 tap" — we keep that promise.
 
+**And one door per skill, not one per rung.** Whole-word writing shipped as its
+own button next to letter writing, and that was wrong: they're one ladder, and
+a second button made the learner responsible for sequencing their own practice.
+Typing had it right from the start — one entry, five rungs inside. Writing now
+matches: a word joins the session once every letter in it is already under way,
+which is a truer gate than a button, and turns "you can write ઘ and ર, so here's
+ઘર" into a moment the app hands you.
+
 ---
 
 ## 2. Lipi — typing Gujarati (ship this first)

@@ -17,7 +17,7 @@ import { acceptsTyped } from "@/lib/core/translit";
 import AksharCard from "@/components/AksharCard";
 import BarakshariGrid from "@/components/BarakshariGrid";
 import AksharPractice from "@/components/AksharPractice";
-import WriteSession, { type WriteTarget } from "@/components/WriteSession";
+import WriteSession, { type WritePools, type WriteTarget } from "@/components/WriteSession";
 import TypeSession, { type TypePools } from "@/components/TypeSession";
 import MasteryBar from "@/components/MasteryBar";
 
@@ -36,6 +36,7 @@ const WRITABLE: WriteTarget[] = PRACTICE_LETTERS.flatMap((akshar) => {
   return [
     {
       id: akshar.id,
+      kind: "letter" as const,
       strokes: glyph.strokes,
       char: akshar.char,
       label: akshar.roman,
@@ -78,7 +79,6 @@ export default function AksharLabPage() {
   const [tab, setTab] = useState<Tab>("vowels");
   const [practicing, setPracticing] = useState(false);
   const [writing, setWriting] = useState(false);
-  const [writingWords, setWritingWords] = useState(false);
   const [typing, setTyping] = useState(false);
 
   const EMPTY = { new: 0, learning: 0, known: 0 };
@@ -104,26 +104,46 @@ export default function AksharLabPage() {
   // now made twice.
   const poolKey = `${progress.completedLessons.length}:${Object.keys(progress.cards).length}`;
 
-  // Words to write by hand: the ones she's actually met, so the drill never
-  // asks her to form a word she's never read. Keyed the same way, for the same
-  // reason.
-  const wordTargets: WriteTarget[] = useMemo(
+  // One writing pool, letters and words together. The session decides which of
+  // each you get (components/WriteSession.tsx) — a word surfaces once its own
+  // letters are under way, which is a better gate than a second button.
+  const writePools: WritePools = useMemo(
     () => {
+      // Words she's actually met, so the drill never asks her to form a word
+      // she's never read. Falls back to the lot so day one isn't empty.
       const met = WRITABLE_WORDS.filter(({ item }) => progress.cards[item.id]);
       const source = met.length >= 3 ? met : WRITABLE_WORDS;
-      return source.map(({ item, composed }) => ({
-        id: item.id,
-        strokes: composed.strokes,
-        width: composed.width,
-        parts: composed.clusters,
-        char: item.gujarati,
-        label: item.roman,
-        note: item.english,
-        audio: item.audio,
-      }));
+      return {
+        letters: WRITABLE,
+        words: source.map(({ item, composed }) => ({
+          id: item.id,
+          kind: "word" as const,
+          // Matras don't stand alone, so they're never practised alone — a word
+          // is where you first draw one, and it's gated on its letters only.
+          requires: [
+            ...new Set(composed.clusters.flatMap((c) => c.ids.filter((i) => !i.startsWith("m-")))),
+          ],
+          strokes: composed.strokes,
+          width: composed.width,
+          parts: composed.clusters,
+          char: item.gujarati,
+          label: item.roman,
+          note: item.english,
+          audio: item.audio,
+        })),
+      };
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [poolKey],
+  );
+
+  const wordsWritten = useMemo(
+    () =>
+      hydrated
+        ? WRITABLE_WORDS.filter(({ item }) => progress.cards[writingCardId(item.id)]).length
+        : 0,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [progress, hydrated],
   );
 
   const typePools: TypePools = useMemo(() => {
@@ -148,18 +168,10 @@ export default function AksharLabPage() {
 
   // Writing gets a wider shell than the rest of the app: the pad is the feature,
   // and a phone-width canvas would undercut it on the iPad it's made for.
-  if (writing || writingWords) {
+  if (writing) {
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-[720px] flex-col px-4 py-6 pb-24">
-        {writing ? (
-          <WriteSession pool={WRITABLE} onExit={() => setWriting(false)} />
-        ) : (
-          <WriteSession
-            pool={wordTargets}
-            kind="word"
-            onExit={() => setWritingWords(false)}
-          />
-        )}
+        <WriteSession pools={writePools} onExit={() => setWriting(false)} />
       </div>
     );
   }
@@ -217,28 +229,15 @@ export default function AksharLabPage() {
           </button>
           <p className="mt-2 text-center text-xs text-ink-soft">
             Watch it formed stroke by stroke, then trace it — works with a finger, best
-            with a Pencil.
+            with a Pencil. Once a word&apos;s letters are steady, you&apos;ll write the
+            whole word: matras, spacing, and the{" "}
+            <span className="guj text-ink">િ</span> that appears on the left but is
+            written second.
           </p>
-
-          {/* Whole words: the same ladder, one rung up. Deliberately secondary
-              rather than hidden — someone who wants to jump ahead should be
-              able to, the same way Watch stays a tap away inside a session. */}
-          {wordTargets.length > 0 && (
-            <>
-              <div className="my-3 h-px bg-magenta/20" />
-              <button
-                type="button"
-                onClick={() => setWritingWords(true)}
-                className="w-full rounded-full border border-magenta/50 bg-surface px-6 py-3 text-base font-semibold text-ink active:scale-[.99]"
-              >
-                ✒️ Write whole words →
-              </button>
-              <p className="mt-2 text-center text-xs text-ink-soft">
-                Letters, matras and spacing together — including the{" "}
-                <span className="guj text-ink">િ</span> that appears on the left but is
-                written second.
-              </p>
-            </>
+          {wordsWritten > 0 && (
+            <p className="mt-1.5 text-center text-xs font-medium text-magenta">
+              {wordsWritten} whole {wordsWritten === 1 ? "word" : "words"} written by hand
+            </p>
           )}
         </div>
       )}

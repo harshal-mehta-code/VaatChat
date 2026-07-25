@@ -12,12 +12,9 @@
 // The one genuinely interesting problem is where a matra goes.
 // ─────────────────────────────────────────────────────────────────────────
 
-// Type-only imports on purpose: they vanish at runtime, which keeps this module
-// loadable straight from node by the guard script. Same discipline as
-// lib/content/stroke-data.ts, and the reason the em box arrives as an argument
-// instead of being imported from ./strokes.
-import type { Pt, Stroke, StrokeGlyph } from "./types";
-import type { Cluster } from "./translit";
+import type { Pt, Stroke, StrokeGlyph } from "./types.ts";
+import type { Cluster } from "./translit.ts";
+import { GLYPH_BOX } from "./strokes.ts";
 
 /** Space between adjacent letters' ink, in em-box units. */
 export const LETTER_GAP = 64;
@@ -115,6 +112,9 @@ export interface ClusterGlyphs {
 
 export interface ComposedCluster {
   guj: string;
+  /** The glyphs it's made of, letter first — so a caller can ask "which letters
+   *  does writing this word actually require?" without re-segmenting. */
+  ids: string[];
   /** Index of this cluster's first stroke within the word's `strokes`. */
   from: number;
   count: number;
@@ -145,11 +145,7 @@ function shift(stroke: Stroke, dx: number, dy = 0): Stroke {
  * off the bottom of the box — and refusing is the honest answer, the same one
  * the typing track gives for a word it can't spell.
  */
-export function placeCluster(
-  cluster: ClusterGlyphs,
-  base: StrokeGlyph,
-  box: number,
-): Stroke[] | null {
+export function placeCluster(cluster: ClusterGlyphs, base: StrokeGlyph): Stroke[] | null {
   const [letter, ...marks] = cluster.glyphs;
   if (!letter) return [];
   const out: Stroke[] = letter.strokes.map((s) => ({ ...s, points: s.points.map((p) => [...p] as Pt) }));
@@ -187,7 +183,7 @@ export function placeCluster(
       if (mine.maxY + dy >= body.minY) return null;
     } else if (anchor === "below") {
       dy = Math.max(0, body.maxY + MATRA_CLEARANCE - mine.minY);
-      dy = Math.min(dy, box - BOX_PADDING - mine.maxY);
+      dy = Math.min(dy, GLYPH_BOX - BOX_PADDING - mine.maxY);
       if (mine.minY + dy <= body.maxY) return null;
     }
 
@@ -210,7 +206,6 @@ export function composeWord(
   word: string,
   clusters: ClusterGlyphs[],
   base: StrokeGlyph,
-  box: number,
 ): ComposedWord | null {
   const strokes: Stroke[] = [];
   const placed: ComposedCluster[] = [];
@@ -221,7 +216,7 @@ export function composeWord(
       cursor += SPACE_WIDTH;
       continue;
     }
-    const ink = placeCluster(cluster, base, box);
+    const ink = placeCluster(cluster, base);
     if (!ink) return null;
     const bounds = inkBox(ink);
     const dx = cursor - bounds.minX;
@@ -229,6 +224,7 @@ export function composeWord(
     for (const s of ink) strokes.push(shift(s, dx));
     placed.push({
       guj: cluster.guj,
+      ids: cluster.glyphs.map((g) => g.id),
       from,
       count: ink.length,
       centerX: midX(bounds) + dx,
@@ -241,14 +237,14 @@ export function composeWord(
   // A one- or two-letter word would otherwise get a tall narrow sliver of a
   // pad, which is horrible to write in. Give it at least a square and centre
   // the ink in it.
-  if (width < box) {
-    const shiftBy = (box - width) / 2;
+  if (width < GLYPH_BOX) {
+    const shiftBy = (GLYPH_BOX - width) / 2;
     for (let i = 0; i < strokes.length; i++) strokes[i] = shift(strokes[i], shiftBy);
     for (const c of placed) c.centerX += shiftBy;
-    width = box;
+    width = GLYPH_BOX;
   }
 
-  return { word, width, height: box, strokes, clusters: placed };
+  return { word, width, height: GLYPH_BOX, strokes, clusters: placed };
 }
 
 /**
@@ -273,7 +269,6 @@ export function composeSegmented(
   clusters: Cluster[],
   glyphFor: (char: string) => StrokeGlyph | undefined,
   base: StrokeGlyph,
-  box: number,
 ): ComposedWord | null {
   if (clusters.map((c) => c.guj).join("") !== word) return null;
 
@@ -297,5 +292,5 @@ export function composeSegmented(
   }
 
   if (resolved.every((c) => c.glyphs.length === 0)) return null;
-  return composeWord(word, resolved, base, box);
+  return composeWord(word, resolved, base);
 }

@@ -159,6 +159,49 @@ The bet: retention that comes from *feeling more connected to family and identit
 - **Register matters.** Gujarati politeness (tું vs. તમે, elder-respect) is taught explicitly — huge for heritage learners who don't want to sound rude to relatives.
 - **A content pipeline** (structured item bank: text + audio + image + metadata + SRS params) so we can scale units without re-engineering, and so AI can help *draft* content that native reviewers approve — never ship unreviewed.
 
+### 7.1 Running out of things to do — the real long-game problem
+
+Content is the thing we will always have least of, and the failure it causes
+isn't "the library is empty". It's **predictability**: a learner who has seen a
+lesson once has seen its exercises, its wrong answers, and where the right
+answer sits. That arrives long before they've actually learned the material,
+and it's what makes an app feel finished when it isn't.
+
+Two different levers, and the cheap one comes first.
+
+**Make what we have go further (shipped, 2026-07-24).** Content declares what
+*could* be practised; a session decides what actually is. `lib/core/session.ts`
+plans a lesson from its full grid — which words open as a guess, which get a
+listening drill, in what order — and `lib/core/variation.ts` seeds every shuffle
+on the session rather than on a permanent id. Distractors are drawn from a pool
+of eight plausible candidates instead of a fixed three. One lesson of six words
+went from **one** possible sitting to effectively unlimited ones, with the
+answer landing in each position a quarter of the time. Guarded by
+`npm run check:variation`, which asserts *both* that phases hold their order and
+that sittings genuinely differ — the second is the one that rots quietly.
+
+Worth naming honestly: this is variety, not new material. It buys real time and
+it makes 130 items feel like far more than 130, but it doesn't teach a word we
+haven't written down.
+
+**Then: more material, without more authoring per item.** In rough order of
+value per unit of effort —
+
+1. **Derive, don't author.** Already the best trade we've made twice: 53 stroke
+   glyphs yield every writable word (`lib/core/compose.ts`), and the
+   transliteration tables yield every typable one (`lib/core/translit.ts`). The
+   same shape is available for barakshari drills, minimal pairs (ત/ટ, દ/ડ), and
+   sentence assembly from grammar patterns × known vocabulary.
+2. **Recombine.** Vaat scenarios and grammar drills are currently authored end
+   to end. A drill that's *generated* from a pattern plus the learner's own
+   unlocked words is both infinite and personal — and it's the same predict →
+   reveal → produce shape we already use.
+3. **Then** author new units, which is the expensive one and should be spent on
+   what can't be derived: real scenarios, real culture, real voice.
+
+The Vyakaran concepts are the current thin spot — three drills each, so a
+concept is exhausted in one sitting. That's the first place (2) pays off.
+
 ---
 
 ## 8. Proposed tech architecture (for discussion)

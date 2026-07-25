@@ -12,6 +12,7 @@ import type { Akshar } from "@/lib/core/types";
 import { useProgress } from "@/lib/client/useProgress";
 import { XP } from "@/lib/core/gamification";
 import { playAudio } from "@/lib/client/speech";
+import { pick, shuffled } from "@/lib/core/variation";
 
 type Mode = "sound" | "letter" | "audio";
 
@@ -24,26 +25,20 @@ interface Question {
 
 const SESSION_SIZE = 12;
 
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
 function buildSession(pool: Akshar[]): Question[] {
   const modes: Mode[] = ["sound", "letter", "audio"];
-  return shuffle(pool)
+  return shuffled(pool, Math.random)
     .slice(0, Math.min(SESSION_SIZE, pool.length))
     .map((target, i) => {
-      const distractors = shuffle(pool.filter((a) => a.type === target.type && a.id !== target.id)).slice(0, 3);
+      const distractors = shuffled(
+        pool.filter((a) => a.type === target.type && a.id !== target.id),
+        Math.random,
+      ).slice(0, 3);
       return {
         id: `${target.id}-${i}`,
         target,
-        mode: modes[Math.floor(Math.random() * modes.length)],
-        options: shuffle([target, ...distractors]),
+        mode: pick(modes, Math.random)!,
+        options: shuffled([target, ...distractors], Math.random),
       };
     });
 }

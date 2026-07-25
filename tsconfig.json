@@ -6,6 +6,10 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    // Lets lib/core modules import each other with an explicit ".ts" extension,
+    // which is what makes them loadable straight from node by the guard scripts
+    // in scripts/ — no bundler, no build step, no duplicated logic in the check.
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",

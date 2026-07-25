@@ -12,10 +12,12 @@
 // away. That keeps a session short (docs/PLAN.md §4.5 — 2–7 min, always ends on
 // a win) without ever locking the demonstration away from someone who wants it.
 //
-// It drives both halves of the track. A letter's strokes are hand-authored; a
-// word's are composed from those same letters (lib/core/compose.ts), so from
-// here down the two are the same thing — some ink to follow and a card to
-// grade. Only the framing differs, which is what `kind` is for.
+// Letters and whole words are one track, not two. A letter's strokes are
+// hand-authored; a word's are composed from those same letters
+// (lib/core/compose.ts), so from here down they're the same thing — some ink to
+// follow and a card to grade. A word joins the session once its own letters are
+// under way, which makes "you can write ઘ and ર, so here's ઘર" a moment the
+// session hands you rather than a second button you have to find.
 
 import { useCallback, useRef, useState } from "react";
 import type { Stroke } from "@/lib/core/types";
@@ -24,17 +26,27 @@ import { useProgress } from "@/lib/client/useProgress";
 import { itemStatus, writingCardId } from "@/lib/core/progress";
 import { XP } from "@/lib/core/gamification";
 import { playAudio } from "@/lib/client/speech";
+import { shuffled } from "@/lib/core/variation";
 import StrokeAnimation from "@/components/StrokeAnimation";
 import WritePad from "@/components/WritePad";
 
 const SESSION_SIZE = 5;
+/** How many whole words one session ends on. The payoff, not the bulk. */
+const WORDS_PER_SESSION = 2;
 
 type Stage = "watch" | "trace" | "write";
+
+export type WriteKind = "letter" | "word";
 
 /** One thing to write: a letter, or a whole word. */
 export interface WriteTarget {
   /** The item this practises. `writingCardId()` turns it into an SRS card. */
   id: string;
+  kind: WriteKind;
+  /** For a word: the letters it's built from. It only comes up once every one
+   *  of them is already being written — so a word is always a victory lap over
+   *  letters you know, never a wall. */
+  requires?: string[];
   /** The ink to learn, already placed in the box. */
   strokes: Stroke[];
   /** Box width. Omit for a square single-letter box. */
@@ -54,62 +66,74 @@ export interface WriteTarget {
   ghostChar?: string;
 }
 
-export type WriteKind = "letter" | "word";
-
 const COPY = {
   letter: {
     watch: "Watch how it's written",
     memory: "Now write it from memory",
     next: "Next letter →",
     xp: XP.letterWritten,
-    done: (n: number) => `You wrote ${n} letters by hand.`,
-    more: "Write more",
   },
   word: {
     watch: "Watch the whole word",
     memory: "Now write the word from memory",
     next: "Next word →",
     xp: XP.wordWritten,
-    done: (n: number) => `You wrote ${n} whole words by hand.`,
-    more: "Write more words",
   },
 } as const;
 
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
+/** "3 letters and 2 words", "5 letters", "2 words" — whichever it actually was. */
+function tally(targets: WriteTarget[]): string {
+  const letters = targets.filter((t) => t.kind === "letter").length;
+  const words = targets.length - letters;
+  const parts = [
+    letters > 0 ? `${letters} letter${letters === 1 ? "" : "s"}` : "",
+    words > 0 ? `${words} word${words === 1 ? "" : "s"}` : "",
+  ].filter(Boolean);
+  return parts.join(" and ");
+}
+
+export interface WritePools {
+  letters: WriteTarget[];
+  /** Composed from the letters — see lib/core/compose.ts. */
+  words: WriteTarget[];
 }
 
 export default function WriteSession({
-  pool,
-  kind = "letter",
+  pools,
   onExit,
 }: {
-  pool: WriteTarget[];
-  kind?: WriteKind;
+  pools: WritePools;
   onExit: () => void;
 }) {
   const { progress, gradeItem, award } = useProgress();
-  const copy = COPY[kind];
 
   // Build the session once, from a ref rather than from the props directly.
   // Grading updates `progress`, and a pool derived from progress is a new array
   // every answer — reacting to that would rebuild the deck mid-question and
   // mis-attribute the attempt on screen. Same trap ReviewSession and
   // TypeSession each had to close.
-  const live = useRef({ pool, progress });
-  live.current = { pool, progress };
+  const live = useRef({ pools, progress });
+  live.current = { pools, progress };
 
   const compose = useCallback(() => {
-    const { pool: p, progress: pr } = live.current;
-    // New things first — the demonstration is the draw, so lead with it.
-    const fresh = p.filter((t) => itemStatus(pr, writingCardId(t.id)) === "new");
-    const seen = p.filter((t) => itemStatus(pr, writingCardId(t.id)) !== "new");
-    return [...shuffle(fresh), ...shuffle(seen)].slice(0, Math.min(SESSION_SIZE, p.length));
+    const { pools: p, progress: pr } = live.current;
+    const started = (id: string) => itemStatus(pr, writingCardId(id)) !== "new";
+
+    // A word earns its place only once every letter in it is already under way.
+    // Nothing is gated on a count or a level — it's the actual prerequisite,
+    // which is why it can sit in the same session instead of behind a door.
+    const ready = p.words.filter((w) => (w.requires ?? []).every(started));
+    const words = shuffled(ready, Math.random).slice(0, WORDS_PER_SESSION);
+
+    // New letters first — the demonstration is the draw, so lead with it.
+    const fresh = p.letters.filter((t) => !started(t.id));
+    const seen = p.letters.filter((t) => started(t.id));
+    const letters = [...shuffled(fresh, Math.random), ...shuffled(seen, Math.random)].slice(
+      0,
+      Math.max(0, SESSION_SIZE - words.length),
+    );
+    // Words last: they're the payoff, and they read as one.
+    return [...letters, ...words];
   }, []);
 
   const [session, setSession] = useState<WriteTarget[]>(compose);
@@ -146,6 +170,7 @@ export default function WriteSession({
       return;
     }
     // The Write rung is the one that counts toward memory.
+    const copy = COPY[current.kind];
     const id = writingCardId(current.id);
     gradeItem(id, score.stars >= 3 ? "easy" : score.stars >= 2 ? "good" : "again");
     if (score.stars >= 2) {
@@ -178,7 +203,7 @@ export default function WriteSession({
         <div className="text-6xl" aria-hidden="true">
           🪶
         </div>
-        <h2 className="text-2xl">{copy.done(session.length)}</h2>
+        <h2 className="text-2xl">You wrote {tally(session)} by hand.</h2>
         <p className="text-ink-soft">
           <span className="font-semibold text-marigold">{clean}</span> came out clean
           {earned > 0 && (
@@ -194,7 +219,7 @@ export default function WriteSession({
             onClick={again}
             className="w-full rounded-full bg-marigold px-6 py-3 text-base font-semibold text-on-accent active:scale-[.99]"
           >
-            {copy.more}
+            Write more
           </button>
           <button
             type="button"
@@ -209,6 +234,8 @@ export default function WriteSession({
   }
 
   if (!current) return null;
+
+  const copy = COPY[current.kind];
 
   const shell = (current.width ?? GLYPH_BOX) > GLYPH_BOX ? "max-w-[720px]" : "max-w-[560px]";
 

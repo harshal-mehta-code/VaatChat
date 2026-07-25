@@ -7,7 +7,6 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 import type { Akshar, StrokeGlyph } from "../core/types";
-import { GLYPH_BOX } from "../core/strokes";
 import { segmentGujarati } from "../core/translit";
 import { composeSegmented, type ComposedWord } from "../core/compose";
 import { VOWELS, CONSONANTS } from "./akshar";
@@ -125,6 +124,5 @@ export function composeGujarati(text: string): ComposedWord | null {
     segmentGujarati(word),
     (char) => GLYPH_BY_CHAR[char],
     BASE_GLYPH,
-    GLYPH_BOX,
   );
 }

@@ -109,13 +109,44 @@ export const ITEMS_BY_ID: Record<string, LexItem> = Object.fromEntries(
 // Generates a sensible, interleaved exercise sequence from a list of item ids,
 // so content stays declarative and we don't hand-author every exercise.
 
-function pickDistractors(itemId: string, pool: string[], n = 3): string[] {
-  const others = pool.filter((id) => id !== itemId);
-  // Deterministic pseudo-shuffle by id hash → stable across renders.
-  const scored = others
-    .map((id) => ({ id, h: [...id].reduce((a, c) => a + c.charCodeAt(0), 0) }))
-    .sort((a, b) => a.h - b.h);
-  return scored.slice(0, n).map((s) => s.id);
+/** How many plausible wrong answers a multiple-choice exercise can draw from. */
+const DISTRACTOR_POOL = 8;
+
+/**
+ * Candidate wrong answers for an item — a *pool*, not a fixed three.
+ *
+ * The session samples from this (see lib/core/session.ts), so replaying a
+ * lesson doesn't hand you the same three wrong answers you've already learned
+ * to dismiss on sight. Candidates come from the item's own lesson first — those
+ * are the words being confused with each other right now, which is exactly what
+ * wants drilling — then widen to anything sharing a tag, so a number is
+ * mistaken for a number rather than for a piece of furniture.
+ *
+ * Anything meaning the same thing in English is excluded: a "wrong" answer that
+ * is arguably right is the one kind of distractor that teaches nothing.
+ */
+function distractorCandidates(itemId: string, lessonItems: string[]): string[] {
+  const target = ITEMS_BY_ID[itemId];
+  if (!target) return [];
+  const plausible = (item: LexItem) =>
+    item.id !== itemId && item.english !== target.english;
+
+  const near = lessonItems
+    .map((id) => ITEMS_BY_ID[id])
+    .filter((i): i is LexItem => Boolean(i) && plausible(i));
+
+  const tags = new Set(target.tags ?? []);
+  const related = ITEMS.filter((i) => plausible(i) && (i.tags ?? []).some((t) => tags.has(t)));
+
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of [...near, ...related]) {
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    out.push(item.id);
+    if (out.length >= DISTRACTOR_POOL) break;
+  }
+  return out;
 }
 
 function buildLesson(
@@ -124,46 +155,44 @@ function buildLesson(
   title: string,
   itemIds: string[],
 ): Lesson {
-  const pool = itemIds;
   const ex: Exercise[] = [];
 
-  // 1) Meet every item. The first few open as a *predict* — guess the meaning
-  //    before it's revealed, which primes memory even when the guess is wrong
-  //    (pretesting effect). We cap it at the first 3 rather than every item so
-  //    a lesson opens with a curiosity beat instead of a wall of coin flips.
-  const PREDICT_COUNT = 3;
-  itemIds.forEach((itemId, i) => {
-    if (i < PREDICT_COUNT) {
-      ex.push({
-        id: `${id}-predict-${itemId}`,
-        kind: "predict",
-        itemId,
-        distractorIds: pickDistractors(itemId, pool),
-      });
-    } else {
-      ex.push({ id: `${id}-intro-${itemId}`, kind: "intro", itemId });
-    }
-  });
+  // What follows is the lesson's *full grid* — everything it could drill —
+  // rather than one sitting's script. `planLesson()` picks from it: which items
+  // open as a guess, which get a listening drill, and in what order. The phase
+  // order below is the pedagogy and it's the part that never moves.
+
+  // 1) Meet every item.
+  for (const itemId of itemIds) {
+    ex.push({
+      id: `${id}-intro-${itemId}`,
+      kind: "intro",
+      itemId,
+      // Carried even though an intro doesn't use them: a session promotes a few
+      // of these to `predict`, and a guess needs something to guess among.
+      distractorIds: distractorCandidates(itemId, itemIds),
+    });
+  }
   // 2) Active recall: pick the meaning (with distractors).
   for (const itemId of itemIds) {
     ex.push({
       id: `${id}-recall-${itemId}`,
       kind: "recall",
       itemId,
-      distractorIds: pickDistractors(itemId, pool),
+      distractorIds: distractorCandidates(itemId, itemIds),
     });
   }
   // 3) Listening: hear it, pick it.
-  for (const itemId of itemIds.slice(0, Math.min(3, itemIds.length))) {
+  for (const itemId of itemIds) {
     ex.push({
       id: `${id}-listen-${itemId}`,
       kind: "listen",
       itemId,
-      distractorIds: pickDistractors(itemId, pool),
+      distractorIds: distractorCandidates(itemId, itemIds),
     });
   }
   // 4) Output: say it back (self-compare in MVP).
-  for (const itemId of itemIds.slice(0, Math.min(3, itemIds.length))) {
+  for (const itemId of itemIds) {
     ex.push({ id: `${id}-speak-${itemId}`, kind: "speak", itemId });
   }
 

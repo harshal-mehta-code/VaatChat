@@ -10,7 +10,8 @@ import { useProgress } from "@/lib/client/useProgress";
 import { playAudio, listenOnce, sttSupported } from "@/lib/client/speech";
 import AudioButton from "./AudioButton";
 import FunFactCard from "./FunFactCard";
-import { seededShuffle } from "./shuffle";
+import { planLesson } from "@/lib/core/session";
+import { makeRng, newSeed, sample, seededShuffle } from "@/lib/core/variation";
 
 interface LessonRunnerProps {
   lesson: Lesson;
@@ -21,16 +22,17 @@ type Step =
   | { kind: "tip"; tip: GrammarTip };
 
 /**
- * Lesson steps = its exercises, with the lesson's grammar tip (if it has one)
- * inserted after the last intro/predict — i.e. once every word has been met,
- * but before the drills. Grammar in context, at the moment it pays off.
+ * Lesson steps = this sitting's exercises, with the lesson's grammar tip (if it
+ * has one) inserted after the last intro/predict — i.e. once every word has been
+ * met, but before the drills. Grammar in context, at the moment it pays off.
  */
-function buildSteps(lesson: Lesson): Step[] {
-  const steps: Step[] = lesson.exercises.map((exercise) => ({ kind: "exercise", exercise }));
+function buildSteps(lesson: Lesson, seed: string): Step[] {
+  const exercises = planLesson(lesson.exercises, makeRng(seed));
+  const steps: Step[] = exercises.map((exercise) => ({ kind: "exercise", exercise }));
   const tip = tipForLesson(lesson.id);
   if (!tip) return steps;
 
-  const lastIntro = lesson.exercises.reduce(
+  const lastIntro = exercises.reduce(
     (last, ex, i) => (ex.kind === "intro" || ex.kind === "predict" ? i : last),
     -1,
   );
@@ -38,15 +40,24 @@ function buildSteps(lesson: Lesson): Step[] {
   return steps;
 }
 
+/** How many wrong answers a multiple-choice exercise shows. */
+const OPTIONS = 3;
+
 export default function LessonRunner({ lesson }: LessonRunnerProps) {
   const { progress, gradeItem, completeLesson } = useProgress();
   const [index, setIndex] = useState(0);
   const [done, setDone] = useState(false);
 
-  // The lesson's steps: its exercises, plus (for some lessons) one grammar tip
-  // slipped in right after the introduction phase — the learner has just met
-  // every word, so the pattern connecting them lands before the drills start.
-  const steps = useMemo(() => buildSteps(lesson), [lesson]);
+  // One seed for this sitting. Everything that varies hangs off it, so the
+  // lesson is stable while you're in it and different when you come back —
+  // rather than a seed like the exercise id, which is stable *forever* and is
+  // how an app ends up with the answer always in the same place.
+  const [seed] = useState(newSeed);
+
+  // The lesson's steps: this sitting's exercises, plus (for some lessons) one
+  // grammar tip slipped in right after the introduction phase — the learner has
+  // just met every word, so the pattern connecting them lands before the drills.
+  const steps = useMemo(() => buildSteps(lesson, seed), [lesson, seed]);
   const total = steps.length;
   const step = steps[index];
   const exercise = step?.kind === "exercise" ? step.exercise : undefined;
@@ -114,9 +125,18 @@ export default function LessonRunner({ lesson }: LessonRunnerProps) {
       </div>
     );
   }
-  const distractors = (exercise?.distractorIds ?? [])
-    .map((id) => ITEMS_BY_ID[id])
-    .filter((i): i is LexItem => Boolean(i));
+  // Three wrong answers drawn from the exercise's candidate pool. Seeded on the
+  // exercise *and* the session, so they hold still while you're choosing and
+  // aren't the same three you dismissed on sight last time.
+  const distractors = exercise
+    ? sample(
+        (exercise.distractorIds ?? [])
+          .map((id) => ITEMS_BY_ID[id])
+          .filter((i): i is LexItem => Boolean(i)),
+        makeRng(`${seed}:${exercise.id}`),
+        OPTIONS,
+      )
+    : [];
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-5 py-6">
@@ -145,6 +165,7 @@ export default function LessonRunner({ lesson }: LessonRunnerProps) {
             exercise={exercise}
             item={item}
             distractors={distractors}
+            optionSeed={`${seed}:${exercise.id}`}
             onAdvance={handleAdvance}
           />
         )
@@ -201,19 +222,21 @@ function GrammarTipCard({ tip, onContinue }: { tip: GrammarTip; onContinue: () =
 
 interface ExerciseViewProps {
   exercise: Exercise;
+  /** Seeds the option order: stable while answering, new next sitting. */
+  optionSeed: string;
   item: LexItem;
   distractors: LexItem[];
   onAdvance: (grade: Grade3 | null) => void;
 }
 
-function ExerciseView({ exercise, item, distractors, onAdvance }: ExerciseViewProps) {
+function ExerciseView({ exercise, item, distractors, optionSeed, onAdvance }: ExerciseViewProps) {
   switch (exercise.kind) {
     case "predict":
-      return <PredictExercise exercise={exercise} item={item} distractors={distractors} onAdvance={onAdvance} />;
+      return <PredictExercise item={item} distractors={distractors} optionSeed={optionSeed} onAdvance={onAdvance} />;
     case "recall":
-      return <RecallExercise exercise={exercise} item={item} distractors={distractors} onAdvance={onAdvance} />;
+      return <RecallExercise item={item} distractors={distractors} optionSeed={optionSeed} onAdvance={onAdvance} />;
     case "listen":
-      return <ListenExercise exercise={exercise} item={item} distractors={distractors} onAdvance={onAdvance} />;
+      return <ListenExercise item={item} distractors={distractors} optionSeed={optionSeed} onAdvance={onAdvance} />;
     case "speak":
       return <SpeakExercise item={item} onAdvance={onAdvance} />;
     case "intro":
@@ -267,17 +290,17 @@ function IntroExercise({ item, onAdvance }: { item: LexItem; onAdvance: (grade: 
  * expected and grading it would poison the item's schedule before it's taught.
  */
 function PredictExercise({
-  exercise,
   item,
   distractors,
+  optionSeed,
   onAdvance,
 }: {
-  exercise: Exercise;
   item: LexItem;
   distractors: LexItem[];
+  optionSeed: string;
   onAdvance: (grade: Grade3 | null) => void;
 }) {
-  const options = seededShuffle([item, ...distractors], exercise.id);
+  const options = seededShuffle([item, ...distractors], optionSeed);
   const [guess, setGuess] = useState<string | null>(null);
   const answered = guess !== null;
   const gotIt = guess === item.english;
@@ -358,17 +381,17 @@ function PredictExercise({
 }
 
 function RecallExercise({
-  exercise,
   item,
   distractors,
+  optionSeed,
   onAdvance,
 }: {
-  exercise: Exercise;
   item: LexItem;
   distractors: LexItem[];
+  optionSeed: string;
   onAdvance: (grade: Grade3 | null) => void;
 }) {
-  const options = seededShuffle([item, ...distractors], exercise.id);
+  const options = seededShuffle([item, ...distractors], optionSeed);
   const [selected, setSelected] = useState<string | null>(null);
 
   const correct = selected === item.english;
@@ -423,17 +446,17 @@ function RecallExercise({
 }
 
 function ListenExercise({
-  exercise,
   item,
   distractors,
+  optionSeed,
   onAdvance,
 }: {
-  exercise: Exercise;
   item: LexItem;
   distractors: LexItem[];
+  optionSeed: string;
   onAdvance: (grade: Grade3 | null) => void;
 }) {
-  const options = seededShuffle([item, ...distractors], exercise.id);
+  const options = seededShuffle([item, ...distractors], optionSeed);
   const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => {
