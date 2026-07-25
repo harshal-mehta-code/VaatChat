@@ -22,7 +22,7 @@ import { planLesson, SESSION_SHAPE } from "../lib/core/session.ts";
 import { makeRng, shuffled, sample } from "../lib/core/variation.ts";
 import { UNITS } from "../lib/content/units.ts";
 import { ITEMS_BY_ID } from "../lib/content/units.ts";
-import { GRAMMAR_MODULES } from "../lib/content/grammar.ts";
+import { GRAMMAR_MODULES, drillPool } from "../lib/content/grammar.ts";
 
 const failures: string[] = [];
 function expect(label: string, ok: boolean, detail = "") {
@@ -169,10 +169,11 @@ for (const lesson of LESSONS) {
 
 const CONCEPTS = GRAMMAR_MODULES.flatMap((m) => m.concepts);
 for (const concept of CONCEPTS) {
-  if (concept.exercises.length < 3) continue;
-  const orders = new Set(
-    SEEDS.map((s) => shuffled(concept.exercises, makeRng(s)).map((e) => e.id).join("|")),
-  );
+  // The pool is authored drills plus the ones derived from the concept's own
+  // verified examples (npm run check:drills covers that they're well-formed).
+  const pool = drillPool(concept);
+  if (pool.length < 3) continue;
+  const orders = new Set(SEEDS.map((s) => shuffled(pool, makeRng(s)).map((e) => e.id).join("|")));
   expect(`${concept.id}: drills barely reorder`, orders.size >= 3, `${orders.size} orders`);
 }
 
@@ -184,7 +185,9 @@ console.log(
   `Session length       : ${planLesson(sampleLesson.exercises, makeRng("x")).length} steps from a ${sampleLesson.exercises.length}-exercise grid (${sampleLesson.id})`,
 );
 console.log(`Distractor pools     : ${pools}, ${thin} with fewer than 4 candidates`);
-console.log(`Grammar concepts     : ${CONCEPTS.length} drill sets shuffled`);
+console.log(
+  `Grammar concepts     : ${CONCEPTS.length}, ${CONCEPTS.reduce((n, c) => n + drillPool(c).length, 0)} drills in their pools`,
+);
 
 if (thin > pools * 0.25) {
   console.error(

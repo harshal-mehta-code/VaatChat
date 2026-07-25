@@ -192,15 +192,34 @@ value per unit of effort —
    transliteration tables yield every typable one (`lib/core/translit.ts`). The
    same shape is available for barakshari drills, minimal pairs (ત/ટ, દ/ડ), and
    sentence assembly from grammar patterns × known vocabulary.
-2. **Recombine.** Vaat scenarios and grammar drills are currently authored end
-   to end. A drill that's *generated* from a pattern plus the learner's own
-   unlocked words is both infinite and personal — and it's the same predict →
-   reveal → produce shape we already use.
+2. **Recombine (shipped for grammar, 2026-07-24).** Every Vyakaran concept
+   carried three authored drills — one sitting's worth, so a second visit was a
+   rerun. `lib/core/grammar-drills.ts` turns those into ten by recombining the
+   concept's *own* discovery examples, which are already native-verified
+   sentences with the taught morpheme marked up. **45 drills → 153**, five shown
+   per sitting.
+
+   The design constraint is the interesting bit, and it's the same one that
+   governs stroke order: **we do not invent Gujarati.** The tempting version of
+   this feature — substitute the learner's vocabulary into a sentence frame —
+   is wrong, because Gujarati inflects (ઘર → ઘરમાં, but રસોડું → રસોડામાં), and a
+   generator that doesn't know that teaches a form nobody writes. So generation
+   is recombination only: blank the highlighted morpheme, scramble a verified
+   sentence into tiles, pick a sentence by its meaning. Every string a learner
+   sees was authored and reviewed, and `npm run check:drills` asserts it by
+   checking each option and tile back against what the concept declares.
+
+   A nice second-order win: concepts that teach *one* form with no internal
+   contrast (all three of `maa-in`'s examples highlight માં) borrow their
+   distractors from their module siblings — so the drill becomes માં vs ને vs થી,
+   which is the confusion a learner actually has.
+
+   The ceiling is honest: this multiplies practice on the three sentences a
+   concept teaches and cannot introduce a fourth. Going further needs
+   grammatical features on the item bank (gender at minimum) and a native pass
+   to confirm them — the Stroke Lab pattern, applied to morphology.
 3. **Then** author new units, which is the expensive one and should be spent on
    what can't be derived: real scenarios, real culture, real voice.
-
-The Vyakaran concepts are the current thin spot — three drills each, so a
-concept is exhausted in one sitting. That's the first place (2) pays off.
 
 ---
 

@@ -15,11 +15,20 @@ import { XP } from "@/lib/core/gamification";
 import { useProgress } from "@/lib/client/useProgress";
 import { playAudio } from "@/lib/client/speech";
 import { funFactFor } from "@/lib/content";
+import { drillPool } from "@/lib/content/grammar";
 import AudioButton from "./AudioButton";
 import FunFactCard from "./FunFactCard";
 import { makeRng, newSeed, seededShuffle, shuffled } from "@/lib/core/variation";
 
 type Phase = "predict" | "discover" | "drill" | "done";
+
+/** Drills in one sitting. Enough to make the pattern stick, short enough to
+ *  finish (docs/PLAN.md §4.5). */
+const DRILLS_PER_SESSION = 5;
+/** ...of which at least this many are the hand-authored ones. They're the
+ *  best-crafted, so every sitting is anchored on them; the derived drills
+ *  (lib/core/grammar-drills.ts) are what stop the concept being a rerun. */
+const AUTHORED_PER_SESSION = 2;
 
 /** Render Gujarati with the pattern substring emphasized. */
 function Highlighted({ text, highlight }: { text: string; highlight?: string }) {
@@ -54,10 +63,16 @@ export default function GrammarRunner({ concept }: { concept: GrammarConcept }) 
   // test the same rule, so their order carries no pedagogy and is free to vary;
   // what must not vary mid-question is where the right answer sits.
   const [seed] = useState(newSeed);
-  const exercises = useMemo(
-    () => shuffled(concept.exercises, makeRng(seed)),
-    [concept.exercises, seed],
-  );
+  const exercises = useMemo(() => {
+    const rng = makeRng(seed);
+    const authored = shuffled(concept.exercises, rng).slice(0, AUTHORED_PER_SESSION);
+    const chosen = new Set(authored.map((e) => e.id));
+    const rest = shuffled(
+      drillPool(concept).filter((e) => !chosen.has(e.id)),
+      rng,
+    ).slice(0, Math.max(0, DRILLS_PER_SESSION - authored.length));
+    return shuffled([...authored, ...rest], rng);
+  }, [concept, seed]);
   const total = exercises.length;
 
   function finishDrills(finalCorrect: number) {

@@ -10,7 +10,8 @@
 // SRS-tracked. See docs/VYAKARAN.md.
 // ─────────────────────────────────────────────────────────────────────────
 
-import type { GrammarModule } from "../core/types";
+import type { GrammarConcept, GrammarExercise, GrammarModule } from "../core/types.ts";
+import { derivedDrills, siblingHighlights } from "../core/grammar-drills.ts";
 
 /** Canonical audio path for a grammar discovery example. */
 export function grammarAudioPath(conceptId: string, i: number): string {
@@ -1108,4 +1109,16 @@ export function allConcepts() {
 
 export function conceptById(id: string) {
   return allConcepts().find((c) => c.id === id);
+}
+
+/**
+ * Every drill a concept can offer: the three hand-authored ones, plus the set
+ * derived from its own verified examples (lib/core/grammar-drills.ts). Assembled
+ * here because deriving needs the concept's module siblings, and the module
+ * catalogue is a content fact.
+ */
+export function drillPool(concept: GrammarConcept): GrammarExercise[] {
+  const module = GRAMMAR_MODULES_BY_ID[concept.moduleId];
+  const siblings = module ? siblingHighlights(module, concept.id) : [];
+  return [...concept.exercises, ...derivedDrills(concept, siblings)];
 }
