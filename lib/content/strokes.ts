@@ -6,11 +6,11 @@
 // with the letter/matra catalogue and the shared typesetting frame.
 // ─────────────────────────────────────────────────────────────────────────
 
-import type { Akshar, StrokeGlyph } from "../core/types";
-import { segmentGujarati } from "../core/translit";
-import { composeSegmented, type ComposedWord } from "../core/compose";
-import { VOWELS, CONSONANTS } from "./akshar";
-import { STROKE_GLYPHS } from "./stroke-data";
+import type { Akshar, StrokeGlyph } from "../core/types.ts";
+import { segmentGujarati } from "../core/translit.ts";
+import { composeSegmented, type ComposedWord } from "../core/compose.ts";
+import { VOWELS, CONSONANTS } from "./akshar.ts";
+import { STROKE_GLYPHS } from "./stroke-data.ts";
 
 export { STROKE_GLYPHS };
 export type { StrokeGlyph, ComposedWord };

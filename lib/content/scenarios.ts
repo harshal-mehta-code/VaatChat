@@ -8,7 +8,7 @@
 // ✅ Lines & audio native-verified by the owner (raised in Gujarat) on 2026-07-24.
 // ─────────────────────────────────────────────────────────────────────────
 
-import type { Scenario } from "../core/types";
+import type { Scenario } from "../core/types.ts";
 
 /** Chat with Ba — a warm first conversation reusing Unit 1 & 2 vocabulary. */
 export const BA_SCENARIO: Scenario = {

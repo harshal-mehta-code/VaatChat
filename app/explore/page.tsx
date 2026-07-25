@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo } from "react";
 import { useProgress } from "@/lib/client/useProgress";
-import { REWARDS } from "@/lib/content";
+import { milestoneCatalog } from "@/lib/content/milestones";
+import { milestoneStates } from "@/lib/core/milestones";
 
 const MODES = [
   {
@@ -72,39 +74,57 @@ export default function ExplorePage() {
         ))}
       </div>
 
-      {/* Rewards — the culture, collected. Quiet, non-interactive shelf. */}
-      <section className="flex flex-col gap-3">
-        <h2 className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">
-          Rewards
-        </h2>
-        <div className="flex gap-3 overflow-x-auto pb-1">
-          {REWARDS.map((reward) => {
-            const unlocked = hydrated && progress.xp >= reward.xpNeeded;
-            return (
-              <div
-                key={reward.id}
-                className={`flex w-24 shrink-0 flex-col items-center gap-1 rounded-2xl border p-3 text-center ${
-                  unlocked ? "border-marigold/50 bg-marigold/10" : "border-line bg-surface-2"
-                }`}
-              >
-                <span className={`text-2xl ${unlocked ? "" : "opacity-40 grayscale"}`} aria-hidden="true">
-                  {reward.emoji}
-                </span>
-                <span
-                  className={`text-[11px] font-semibold leading-tight ${
-                    unlocked ? "text-ink" : "text-ink-soft"
-                  }`}
-                >
-                  {reward.title}
-                </span>
-                <span className="text-[10px] leading-tight text-ink-soft">
-                  {unlocked ? "Unlocked" : `${reward.xpNeeded} XP`}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+      {/* The journey. This shelf used to hold six XP thresholds — "Reach 500 XP"
+          and the like — which measured activity and promised nothing. Same
+          shelf, same warmth, but every tile is now a thing you can do. */}
+      <JourneySummary />
+
     </div>
+  );
+}
+
+/** The journey, as a shelf you can tap into. */
+function JourneySummary() {
+  const { progress, hydrated } = useProgress();
+  const states = useMemo(
+    () => (hydrated ? milestoneStates(progress, milestoneCatalog(progress)) : []),
+    [progress, hydrated],
+  );
+  if (!hydrated) return null;
+  const earned = states.filter((s) => s.earned).length;
+
+  return (
+    <section className="flex flex-col gap-3">
+      <div className="flex items-baseline justify-between gap-2 px-1">
+        <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">
+          Your journey
+        </h2>
+        <span className="text-xs font-medium text-ink-soft">
+          {earned} of {states.length}
+        </span>
+      </div>
+      <Link
+        href="/journey"
+        className="flex gap-3 overflow-x-auto rounded-2xl border border-line bg-surface p-3 transition-colors hover:bg-surface-2"
+      >
+        {states.map(({ milestone, earned: won }) => (
+          <div
+            key={milestone.id}
+            className={`flex w-24 shrink-0 flex-col items-center gap-1 rounded-xl border p-3 text-center ${
+              won ? "border-marigold/50 bg-marigold/10" : "border-line bg-surface-2"
+            }`}
+          >
+            <span className={`text-2xl ${won ? "" : "opacity-40 grayscale"}`} aria-hidden="true">
+              {milestone.emoji}
+            </span>
+            <span
+              className={`text-[11px] font-semibold leading-tight ${won ? "text-ink" : "text-ink-soft"}`}
+            >
+              {milestone.title}
+            </span>
+          </div>
+        ))}
+      </Link>
+    </section>
   );
 }

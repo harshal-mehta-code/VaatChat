@@ -11,8 +11,8 @@
 // stays portable to iOS.
 // ─────────────────────────────────────────────────────────────────────────
 
-import type { Unit, Lesson, GrammarModule, GrammarConcept } from "./types";
-import type { Progress } from "./progress";
+import type { Unit, Lesson, GrammarModule, GrammarConcept } from "./types.ts";
+import type { Progress } from "./progress.ts";
 
 /** All lessons across all units, in path order (unit.order, then lesson index). */
 export function orderedLessons(units: Unit[]): Lesson[] {

@@ -17,9 +17,9 @@
 // algebra already is.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Progress } from "../core/progress";
-import { mergeProgress, progressDiffers } from "../core/sync";
-import { getSupabase, cloudSyncConfigured } from "./supabase";
+import type { Progress } from "../core/progress.ts";
+import { mergeProgress, progressDiffers } from "../core/sync.ts";
+import { getSupabase, cloudSyncConfigured } from "./supabase.ts";
 
 export type SyncStatus = "off" | "signed-out" | "syncing" | "synced" | "error";
 

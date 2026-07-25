@@ -23,6 +23,9 @@ export const XP = {
   wordWritten: 14, // wrote a whole word by hand — letters, matras, spacing
   wordTyped: 10, // typed a whole word into Gujarati script
   grammarConcept: 25, // a grammar concept mastered end-to-end
+  // The biggest single award, because a milestone is the only thing here that
+  // marks a *capability* rather than an action (lib/core/milestones.ts).
+  milestone: 50,
   perfectLesson: 10, // bonus
 } as const;
 

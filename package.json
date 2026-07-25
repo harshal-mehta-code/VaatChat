@@ -16,6 +16,7 @@
     "check:compose": "node --experimental-strip-types scripts/check-compose.ts",
     "check:variation": "node --experimental-strip-types scripts/check-variation.ts",
     "check:drills": "node --experimental-strip-types scripts/check-drills.ts",
+    "check:milestones": "node --experimental-strip-types scripts/check-milestones.ts",
     "gen:review": "node --experimental-strip-types scripts/gen-review-sheet.ts",
     "check:sync": "node --experimental-strip-types scripts/check-sync.ts",
     "migrate": "node --env-file=.env.local --experimental-strip-types scripts/migrate.ts",

@@ -7,7 +7,7 @@
 // kids grow up on, and our highest-leverage literacy tool.
 // ─────────────────────────────────────────────────────────────────────────
 
-import type { Akshar, BarakshariCell } from "../core/types";
+import type { Akshar, BarakshariCell } from "../core/types.ts";
 
 /** Core vowels. `matra` is the diacritic form that attaches to a consonant. */
 export const VOWELS: Akshar[] = [

@@ -7,15 +7,15 @@
 // return new progress; the storage adapter at the bottom handles I/O.
 // ─────────────────────────────────────────────────────────────────────────
 
-import type { CardState } from "./srs";
-import { newCard, reviewCard, isDue, type Grade3 } from "./srs";
+import type { CardState } from "./srs.ts";
+import { newCard, reviewCard, isDue, type Grade3 } from "./srs.ts";
 import {
   type Streak,
   registerActivity,
   XP,
   levelFromXp,
   type LevelInfo,
-} from "./gamification";
+} from "./gamification.ts";
 
 export interface Progress {
   version: 1;
@@ -27,9 +27,19 @@ export interface Progress {
   goal?: string;
   /** Chosen motivation bucket from onboarding. */
   motivation?: string;
-  /** Depth signal from onboarding: wants the formal, grammar-first path
-   *  surfaced (orthogonal to motivation — you can want both). */
+  /**
+   * Whether the home screen offers the next Vyakaran concept. A *preference*
+   * now, living in Account where preferences belong and defaulting to on —
+   * it used to be a one-shot question in onboarding, which asked people to
+   * decide about Gujarati grammar before they'd seen any. See the note in
+   * lib/core/personalize.ts.
+   */
   wantsGrammar?: boolean;
+  /** What they'd like to be called, as they typed it. */
+  name?: string;
+  /** ...and in Gujarati, which they confirmed. The one string in the app we
+   *  render rather than author — it's theirs, so they're the authority. */
+  nameGujarati?: string;
   /** Whether onboarding is complete. */
   onboarded: boolean;
   xp: number;
@@ -42,6 +52,15 @@ export interface Progress {
   aksharMastered: string[];
   /** Grammar concept ids the learner has worked through at least once. */
   completedGrammar: string[];
+  /**
+   * Word ids typed correctly into Gujarati script. A plain tally, deliberately
+   * *not* an SRS namespace — typing grades the letter's own card, and that
+   * decision (docs/LEKHAN.md §4) is what keeps the Review deck legible. This
+   * just counts, so "text the family group" has something to measure.
+   */
+  typedWords: string[];
+  /** Milestones we've already made a fuss about, so we don't do it twice. */
+  celebratedMilestones: string[];
 }
 
 export function freshProgress(now: Date = new Date()): Progress {
@@ -56,6 +75,8 @@ export function freshProgress(now: Date = new Date()): Progress {
     completedScenarios: [],
     aksharMastered: [],
     completedGrammar: [],
+    typedWords: [],
+    celebratedMilestones: [],
   };
 }
 
@@ -178,13 +199,43 @@ export function completeGrammar(p: Progress, conceptId: string, now: Date = new 
   return next;
 }
 
-export function setOnboarding(
+export interface OnboardingAnswers {
+  goal: string;
+  motivation: string;
+  name?: string;
+  nameGujarati?: string;
+}
+
+export function setOnboarding(p: Progress, answers: OnboardingAnswers): Progress {
+  return { ...p, onboarded: true, wantsGrammar: p.wantsGrammar ?? true, ...answers };
+}
+
+/** Change what we call them — and what we'll teach them to write. */
+export function setName(p: Progress, name: string, nameGujarati: string): Progress {
+  return { ...p, name, nameGujarati };
+}
+
+export function setWantsGrammar(p: Progress, wantsGrammar: boolean): Progress {
+  return { ...p, wantsGrammar };
+}
+
+/** One more word typed into Gujarati script. Idempotent per word: the milestone
+ *  counts distinct words, so re-typing મમ્મી ten times isn't ten words. */
+export function recordTypedWord(p: Progress, wordId: string): Progress {
+  if (p.typedWords.includes(wordId)) return p;
+  return { ...p, typedWords: [...p.typedWords, wordId] };
+}
+
+/** Mark milestones as celebrated, and pay out for the ones that are new. */
+export function celebrateMilestones(
   p: Progress,
-  goal: string,
-  motivation: string,
-  wantsGrammar = false,
+  ids: string[],
+  now: Date = new Date(),
 ): Progress {
-  return { ...p, onboarded: true, goal, motivation, wantsGrammar };
+  const fresh = ids.filter((id) => !p.celebratedMilestones.includes(id));
+  if (fresh.length === 0) return p;
+  const next = award(p, XP.milestone * fresh.length, now);
+  return { ...next, celebratedMilestones: [...next.celebratedMilestones, ...fresh] };
 }
 
 // ── Storage adapter (localStorage; SSR-safe) ────────────────────────────────

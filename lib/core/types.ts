@@ -318,14 +318,9 @@ export interface FunFact {
   learn?: string;
 }
 
-// ── Rewards (kind, culturally-themed gamification) ─────────────────────────
-
-export interface Reward {
-  id: string;
-  emoji: string;
-  title: string;
-  /** How it's earned, shown before unlock. */
-  requirement: string;
-  /** XP threshold that unlocks it (MVP: simple XP gates). */
-  xpNeeded: number;
-}
+// ── Rewards ────────────────────────────────────────────────────────────────
+// There is no Reward type any more. It was six XP thresholds — "Reach 500 XP" —
+// which measured how much someone had *done* rather than what they could now
+// *do*, and read as filler because it was. Replaced by the journey:
+// lib/core/milestones.ts, where every entry is a capability with criteria the
+// build proves are reachable.

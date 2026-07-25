@@ -1,35 +1,74 @@
 "use client";
 
-// Three warm, quick onboarding steps: motivation → goal → first word.
+// Onboarding: five quick screens that end with you knowing what you signed up
+// for.
+//
+// It used to be three — why, goal, say hello — and then you were dropped on the
+// home screen having never been told what the app would teach you or how long
+// it takes. Two things changed:
+//
+//   Your name in Gujarati. It costs one input and it's the first moment the
+//   script stops being decoration and becomes *yours*. It also sets up the
+//   milestone that the whole writing track builds toward (docs/LEKHAN.md §5).
+//
+//   The plan. Four pillars, one line each, an honest five-minutes-a-day, and
+//   the first milestone named. Expectations set once, up front.
+//
+// What left: the "teach me properly" grammar toggle. It asked people to decide
+// about Gujarati grammar in the first thirty seconds, before they'd seen any,
+// and then delivered one extra button. Vyakaran is now offered when it's
+// relevant, and is a preference in Account — see lib/core/personalize.ts.
 
 import { useState } from "react";
 import { MOTIVATIONS, GOAL_SUGGESTIONS, ITEMS_BY_ID } from "@/lib/content";
+import { transliterateRoman } from "@/lib/core/translit";
 import { playAudio } from "@/lib/client/speech";
+import type { OnboardingAnswers } from "@/lib/core/progress";
 import AudioButton from "./AudioButton";
 
 const KEM_CHO = ITEMS_BY_ID["kem-cho"];
 
 interface OnboardingProps {
-  onFinish: (goal: string, motivation: string, wantsGrammar: boolean) => void;
+  onFinish: (answers: OnboardingAnswers) => void;
 }
 
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 5;
+
+const PILLARS: { guj: string; label: string; blurb: string; emoji: string }[] = [
+  { guj: "વાત", label: "Speak", blurb: "Real phrases from day one, out loud.", emoji: "💬" },
+  { guj: "અક્ષર", label: "The script", blurb: "Read it, write it by hand, type it.", emoji: "✍️" },
+  { guj: "વ્યાકરણ", label: "Grammar", blurb: "Why the words change shape — when you want it.", emoji: "🧩" },
+  { guj: "સંગ્રહ", label: "Remember", blurb: "Reviews timed so nothing slips away.", emoji: "🔁" },
+];
 
 export default function Onboarding({ onFinish }: OnboardingProps) {
   const [step, setStep] = useState(0);
   const [motivationId, setMotivationId] = useState<string | null>(null);
-  const [wantsGrammar, setWantsGrammar] = useState(false);
   const [goal, setGoal] = useState<string>("");
   const [customGoal, setCustomGoal] = useState("");
+  const [name, setName] = useState("");
   const [said, setSaid] = useState(false);
 
   const effectiveGoal = goal || customGoal.trim();
+  const nameGujarati = name.trim() ? transliterateRoman(name.trim()) : "";
 
   function finish() {
-    const finalGoal = effectiveGoal || GOAL_SUGGESTIONS[0];
-    const finalMotivation = motivationId ?? MOTIVATIONS[0].id;
-    onFinish(finalGoal, finalMotivation, wantsGrammar);
+    onFinish({
+      goal: effectiveGoal || GOAL_SUGGESTIONS[0],
+      motivation: motivationId ?? MOTIVATIONS[0].id,
+      ...(name.trim() ? { name: name.trim(), nameGujarati } : {}),
+    });
   }
+
+  const back = (to: number) => (
+    <button
+      type="button"
+      onClick={() => setStep(to)}
+      className="rounded-full border border-line bg-surface px-5 py-3.5 text-sm font-medium text-ink-soft"
+    >
+      Back
+    </button>
+  );
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-5 py-8">
@@ -72,34 +111,6 @@ export default function Onboarding({ onFinish }: OnboardingProps) {
               </button>
             ))}
           </div>
-
-          {/* Depth signal — orthogonal to the "why". One tap, no extra step. */}
-          <button
-            type="button"
-            aria-pressed={wantsGrammar}
-            onClick={() => setWantsGrammar((v) => !v)}
-            className={`mt-4 flex items-center gap-3 rounded-2xl border p-4 text-left transition-colors ${
-              wantsGrammar ? "border-peacock bg-peacock/10" : "border-line bg-surface hover:bg-surface-2"
-            }`}
-          >
-            <span className="text-2xl" aria-hidden="true">
-              📚
-            </span>
-            <span className="flex flex-1 flex-col">
-              <span className="text-sm font-semibold text-ink">Teach me properly</span>
-              <span className="mt-0.5 text-xs text-ink-soft">
-                Grammar and all — I want to understand how it works.
-              </span>
-            </span>
-            <span
-              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs ${
-                wantsGrammar ? "border-peacock bg-peacock text-on-accent" : "border-line text-transparent"
-              }`}
-              aria-hidden="true"
-            >
-              ✓
-            </span>
-          </button>
 
           <div className="mt-auto pt-6">
             <button
@@ -156,13 +167,7 @@ export default function Onboarding({ onFinish }: OnboardingProps) {
             />
           </div>
           <div className="mt-auto flex gap-2 pt-6">
-            <button
-              type="button"
-              onClick={() => setStep(0)}
-              className="rounded-full border border-line bg-surface px-5 py-3.5 text-sm font-medium text-ink-soft"
-            >
-              Back
-            </button>
+            {back(0)}
             <button
               type="button"
               disabled={!effectiveGoal}
@@ -175,7 +180,63 @@ export default function Onboarding({ onFinish }: OnboardingProps) {
         </div>
       )}
 
+      {/* ── Your name, in Gujarati ────────────────────────────────────────
+          The only Gujarati in this app that isn't authored and reviewed. It
+          can't be: nobody can look up how *your* name is spelled, and the
+          person typing it is the one qualified to say. So we render what a
+          phonetic keyboard would render and let them correct it. */}
       {step === 2 && (
+        <div className="flex flex-1 flex-col">
+          <h2 className="mb-1 text-2xl">What should we call you? 🪔</h2>
+          <p className="mb-6 text-sm text-ink-soft">
+            Type it the way it sounds. We&apos;ll show you your name in Gujarati — and one
+            day soon, how to write it by hand.
+          </p>
+
+          <input
+            id="learner-name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Smita"
+            autoComplete="given-name"
+            autoCapitalize="words"
+            className="w-full rounded-xl border border-line bg-surface px-4 py-3 text-base text-ink outline-none focus-visible:border-peacock"
+          />
+
+          <div className="mt-5 flex min-h-[7.5rem] flex-col items-center justify-center gap-2 rounded-2xl border border-line bg-surface p-6 text-center shadow-[var(--shadow)]">
+            {nameGujarati ? (
+              <>
+                <div className="guj text-4xl font-medium text-ink">{nameGujarati}</div>
+                <div className="text-xs text-ink-soft">That&apos;s you.</div>
+              </>
+            ) : (
+              <div className="text-sm text-ink-soft">Your name will appear here ✨</div>
+            )}
+          </div>
+
+          {nameGujarati && (
+            <p className="mt-3 text-center text-xs text-ink-soft">
+              Not quite right? Gujarati spells names by sound — try writing the vowels you
+              actually hear (<span className="font-mono text-ink">garaba</span>, not{" "}
+              <span className="font-mono text-ink">garba</span>). You can change it any time.
+            </p>
+          )}
+
+          <div className="mt-auto flex gap-2 pt-6">
+            {back(1)}
+            <button
+              type="button"
+              onClick={() => setStep(3)}
+              className="flex-1 rounded-full bg-peacock px-6 py-3.5 text-base font-semibold text-on-accent"
+            >
+              {nameGujarati ? "That's me" : "Skip for now"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === 3 && (
         <div className="flex flex-1 flex-col">
           <h2 className="mb-1 text-2xl">Say your first word 🗣️</h2>
           <p className="mb-6 text-sm text-ink-soft">
@@ -207,19 +268,66 @@ export default function Onboarding({ onFinish }: OnboardingProps) {
             {said ? "Nice! 🎉 I said it!" : "I said it!"}
           </button>
           <div className="mt-auto flex gap-2 pt-6">
+            {back(2)}
             <button
               type="button"
-              onClick={() => setStep(1)}
-              className="rounded-full border border-line bg-surface px-5 py-3.5 text-sm font-medium text-ink-soft"
+              onClick={() => setStep(4)}
+              className="flex-1 rounded-full bg-magenta px-6 py-3.5 text-base font-semibold text-on-accent"
             >
-              Back
+              Continue
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── The plan ───────────────────────────────────────────────────── */}
+      {step === 4 && (
+        <div className="flex flex-1 flex-col">
+          <h2 className="mb-1 text-2xl">Here&apos;s the plan 🗺️</h2>
+          <p className="mb-5 text-sm text-ink-soft">
+            Four things, woven together. About five minutes a day — short sessions beat
+            long ones, and we&apos;ll never guilt you for missing one.
+          </p>
+
+          <ul className="flex flex-col gap-2">
+            {PILLARS.map((p) => (
+              <li
+                key={p.guj}
+                className="flex items-start gap-3 rounded-2xl border border-line bg-surface p-3.5"
+              >
+                <span className="text-xl" aria-hidden="true">
+                  {p.emoji}
+                </span>
+                <span className="flex min-w-0 flex-col">
+                  <span className="flex items-baseline gap-2">
+                    <span className="guj text-sm font-semibold text-ink">{p.guj}</span>
+                    <span className="text-sm font-semibold text-ink">{p.label}</span>
+                  </span>
+                  <span className="text-xs text-ink-soft">{p.blurb}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-5 rounded-2xl border border-marigold/40 bg-marigold/10 p-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-marigold">
+              First milestone
+            </div>
+            <p className="mt-0.5 text-base font-semibold text-ink">🌱 Your first Gujarati</p>
+            <p className="mt-0.5 text-xs text-ink-soft">
+              Finish one lesson — about five minutes from now. There are ten more after it,
+              and the last one is holding your own in a real conversation.
+            </p>
+          </div>
+
+          <div className="mt-auto flex gap-2 pt-6">
+            {back(3)}
             <button
               type="button"
               onClick={finish}
               className="flex-1 rounded-full bg-peacock px-6 py-3.5 text-base font-semibold text-on-accent"
             >
-              Start learning →
+              Let&apos;s go →
             </button>
           </div>
         </div>

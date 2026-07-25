@@ -9,7 +9,7 @@
 // See docs/LEKHAN.md §3.5 for the design rationale.
 // ─────────────────────────────────────────────────────────────────────────
 
-import type { Pt, Stroke } from "./types";
+import type { Pt, Stroke } from "./types.ts";
 
 /** The shared em-box every glyph is authored in. */
 export const GLYPH_BOX = 1000;

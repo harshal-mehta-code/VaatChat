@@ -7,7 +7,7 @@
 // voice-actor recordings can still replace it file-for-file later.
 // ─────────────────────────────────────────────────────────────────────────
 
-import type { Exercise, LexItem, Lesson, Unit } from "../core/types";
+import type { Exercise, LexItem, Lesson, Unit } from "../core/types.ts";
 
 // ── Item bank ───────────────────────────────────────────────────────────────
 // Kept flat so exercises + dialogues can reference by id, and the SRS pool is

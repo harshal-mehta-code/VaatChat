@@ -8,7 +8,7 @@
 // kept to safe, well-known facts (no invented statistics).
 // ─────────────────────────────────────────────────────────────────────────
 
-import type { FunFact } from "../core/types";
+import type { FunFact } from "../core/types.ts";
 
 export const FUN_FACTS: FunFact[] = [
   {

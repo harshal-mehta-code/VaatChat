@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useProgress } from "@/lib/client/useProgress";
 import { masteredCount } from "@/lib/core/progress";
+import { transliterateRoman } from "@/lib/core/translit";
 
 export default function AccountPage() {
   const { progress, hydrated, sync } = useProgress();
@@ -104,6 +105,8 @@ export default function AccountPage() {
           done
         </p>
       </div>
+
+      <Settings />
 
       {sync.status === "off" ? (
         <p className="text-sm text-ink-soft">
@@ -230,6 +233,130 @@ export default function AccountPage() {
           </p>
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * Preferences.
+ *
+ * Two, and both used to be somewhere worse. The name was never asked for, so
+ * the milestone that the whole writing track builds toward had nothing to aim
+ * at. And "show me grammar" was a one-shot question in onboarding that could
+ * never be changed — asked before anyone had seen a word of Gujarati, and then
+ * frozen. A preference belongs here, where you can change your mind.
+ */
+function Settings() {
+  const { progress, setName, setWantsGrammar } = useProgress();
+  const [draft, setDraft] = useState(progress.name ?? "");
+  const [editing, setEditing] = useState(false);
+
+  const preview = draft.trim() ? transliterateRoman(draft.trim()) : "";
+  const grammarOn = progress.wantsGrammar !== false;
+
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4">
+      <h2 className="text-base">Preferences</h2>
+
+      {/* Name */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-sm text-ink-soft">Your name</span>
+          {!editing && (
+            <button
+              type="button"
+              onClick={() => {
+                setDraft(progress.name ?? "");
+                setEditing(true);
+              }}
+              className="text-xs font-medium text-peacock"
+            >
+              {progress.name ? "Change" : "Add"}
+            </button>
+          )}
+        </div>
+
+        {editing ? (
+          <>
+            <input
+              type="text"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="e.g. Smita"
+              autoCapitalize="words"
+              className="w-full rounded-xl border border-line bg-surface-2 px-4 py-3 text-base text-ink"
+            />
+            {preview && (
+              <p className="guj text-center text-2xl text-ink">{preview}</p>
+            )}
+            <p className="text-xs text-ink-soft">
+              Gujarati spells names by sound. If a letter looks squashed onto the next one,
+              write the vowel you actually hear — <span className="font-mono text-ink">garaba</span>,
+              not <span className="font-mono text-ink">garba</span>.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                className="rounded-full border border-line bg-surface px-4 py-2.5 text-sm font-medium text-ink-soft"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!preview}
+                onClick={() => {
+                  setName(draft.trim(), preview);
+                  setEditing(false);
+                }}
+                className="flex-1 rounded-full bg-peacock px-4 py-2.5 text-sm font-semibold text-on-accent disabled:opacity-40"
+              >
+                Save
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className="text-lg text-ink">
+            {progress.nameGujarati ? (
+              <>
+                <span className="guj">{progress.nameGujarati}</span>
+                <span className="ml-2 text-sm text-ink-soft">{progress.name}</span>
+              </>
+            ) : (
+              <span className="text-sm text-ink-soft">
+                Not set — add it and we&apos;ll teach you to write it.
+              </span>
+            )}
+          </p>
+        )}
+      </div>
+
+      {/* Grammar */}
+      <button
+        type="button"
+        aria-pressed={grammarOn}
+        onClick={() => setWantsGrammar(!grammarOn)}
+        className="flex items-center gap-3 rounded-xl border border-line bg-surface-2 p-3 text-left"
+      >
+        <span className="text-xl" aria-hidden="true">
+          🧩
+        </span>
+        <span className="flex flex-1 flex-col">
+          <span className="text-sm font-semibold text-ink">Offer grammar on the home screen</span>
+          <span className="mt-0.5 text-xs text-ink-soft">
+            Vyakaran shows up once you&apos;ve met enough Gujarati for it to help. It stays in
+            Explore either way.
+          </span>
+        </span>
+        <span
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs ${
+            grammarOn ? "border-peacock bg-peacock text-on-accent" : "border-line text-transparent"
+          }`}
+          aria-hidden="true"
+        >
+          ✓
+        </span>
+      </button>
     </div>
   );
 }

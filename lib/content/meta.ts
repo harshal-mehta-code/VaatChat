@@ -1,8 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────
-// Onboarding options + culturally-themed rewards.
+// Onboarding options.
 // ─────────────────────────────────────────────────────────────────────────
-
-import type { Reward } from "../core/types";
 
 /** Onboarding "why are you here?" — tunes tone/content later; primary target
  *  is the zero-exposure beginner, so options are welcoming to a blank slate. */
@@ -22,14 +20,4 @@ export const GOAL_SUGGESTIONS: string[] = [
   "Greet my partner's family at dinner",
   "Read my first Gujarati word",
   "Send a voice note to the family group",
-];
-
-/** Rewards are the culture — collected, not bought. MVP: simple XP gates. */
-export const REWARDS: Reward[] = [
-  { id: "diya", emoji: "🪔", title: "First Diya", requirement: "Finish your first lesson", xpNeeded: 20 },
-  { id: "chai", emoji: "☕", title: "Cutting Chai", requirement: "Reach 100 XP", xpNeeded: 100 },
-  { id: "rangoli", emoji: "🌸", title: "Rangoli Petal", requirement: "Reach 250 XP", xpNeeded: 250 },
-  { id: "thali", emoji: "🍽️", title: "Full Thali", requirement: "Reach 500 XP", xpNeeded: 500 },
-  { id: "garba", emoji: "💃", title: "Garba Night", requirement: "Reach 800 XP", xpNeeded: 800 },
-  { id: "kite", emoji: "🪁", title: "Uttarayan Kite", requirement: "Reach 1200 XP", xpNeeded: 1200 },
 ];

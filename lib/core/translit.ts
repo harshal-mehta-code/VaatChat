@@ -411,23 +411,35 @@ export function typedCanonical(gujarati: string): string {
     const spec = VOWEL[chars[0]] ?? CONSONANT[chars[0]];
     if (spec) return spec.keyboard ?? (CONSONANT[chars[0]] ? spec.typed[0] + "a" : spec.typed[0]);
   }
-  // Multi-character (a barakshari cell, a word): keep the capital of the lead
-  // consonant if it has one, and take canonical spellings for the rest.
+  // Multi-character (a barakshari cell, a word): canonical spelling per
+  // cluster, with the retroflex capital kept wherever it falls.
   const clusters = segmentGujarati(gujarati);
+  /** Is this the last sounded cluster of its word, in a word of more than one?
+   *  Schwa deletion is a *word*-final rule; anchoring it to the end of the whole
+   *  string is what used to make કેમ છો? come out as `kema chho?`, which is not
+   *  a thing anybody types. */
+  const wordFinal = (idx: number): boolean => {
+    let start = idx;
+    while (start > 0 && !clusters[start - 1].literal) start--;
+    return idx + 1 >= clusters.length || Boolean(clusters[idx + 1].literal) ? idx > start : false;
+  };
   return clusters
     .map((c, idx) => {
       if (c.literal) return c.guj;
       let form = c.typed[0];
       // Word-final schwa deletion — શાક is `shaak`, never `shaaka`. Real in
       // speech, and real on the keyboard.
-      if (c.inherent && clusters.length > 1 && idx === clusters.length - 1 && form.endsWith("a")) {
+      if (c.inherent && wordFinal(idx) && form.endsWith("a")) {
         form = form.slice(0, -1);
       }
-      if (idx === 0) {
-        const cap = CONSONANT[[...c.guj][0]]?.keyboard;
-        // "Ta" → "T", then the cluster's own vowel: ટી → "Tee".
-        if (cap && cap[0] !== cap[0].toLowerCase()) return cap[0] + form.slice(1);
-      }
+      // A retroflex needs its capital *wherever* it appears, not just at the
+      // front. This used to fire only on the first cluster, which meant we
+      // taught `rotalee` for રોટલી — and typing that on a real phone gives you
+      // રોતલી, the dental. The lowercase form is still accepted (matching folds
+      // case); this is about the answer we hold up as correct.
+      const cap = CONSONANT[[...c.guj][0]]?.keyboard;
+      // "Ta" → "T", then the cluster's own vowel: ટી → "Tee".
+      if (cap && cap[0] !== cap[0].toLowerCase()) return cap[0] + form.slice(1);
       return form;
     })
     .join("");
@@ -446,4 +458,236 @@ export function typedRivals(char: string): string[] {
   return Object.entries(pool)
     .filter(([other, s]) => other !== char && s.typed[0] === mine)
     .map(([other]) => other);
+}
+
+// ── The other direction: roman in, script out ─────────────────────────────
+//
+// Everything above answers "did they type this word correctly?" — it always has
+// a target to compare against, which is why the app can drill typing without
+// ever producing Gujarati of its own.
+//
+// This does produce it, and that deserves an explanation, because "we never
+// invent Gujarati" is a rule this project enforces in three separate guards.
+// The rule exists to stop us *teaching* a form no native speaker writes. It has
+// exactly one honest exception: the learner's own name. There is no authored
+// answer for સ્મિતા or હર્ષલ — nobody can look it up for her, and the only
+// person qualified to say whether it's right is the one typing it. So we render
+// what a phonetic keyboard would render, show it to her, and let her fix it.
+// Nothing here reaches a drill, a lesson, or an SRS card.
+//
+// Two rules do most of the work, and both are what a real keyboard does:
+//   consonant + consonant  → halant stack   (priya → પ્રિય, not પરિય)
+//   nasal + a different consonant → anusvara (anand → અનંદ, not અનન્દ)
+//
+// Where it falls short is the same place phone keyboards fall short: the
+// retroflex/palatal choices English can't spell. `harshal` gives હર્શલ; the
+// capital that a real keyboard needs — `harShal` — gives હર્ષલ. We teach that
+// capital elsewhere (docs/LEKHAN.md §2.3), so this is consistent rather than a
+// special case.
+
+/** Nasals that become an anusvara before an unlike consonant. */
+const NASALS = new Set(["ન", "મ", "ણ", "ઙ", "ઞ"]);
+
+/**
+ * Consonants a nasal does *not* collapse onto. Before a stop or a sibilant a
+ * nasal is written as the anusvara — આનંદ, પલંગ, હંસ — but before a semivowel
+ * it stays a real conjunct: જમ્યા, કન્યા, સમ્રાટ. Without this the rule eats
+ * every મ્ય it meets.
+ */
+const NO_ANUSVARA_BEFORE = new Set(["ય", "ર", "લ", "વ", "ળ", "હ"]);
+
+interface Reverse {
+  /** Longest spelling first, so `aa` wins over `a`. */
+  order: string[];
+  map: Record<string, string>;
+}
+
+/** Build spelling → character, first writer wins so the unmarked letter keeps
+ *  the plain spelling (`t` is ત, and ટ has to be asked for as `T`). */
+function reverseOf(specs: Record<string, Spec>): Reverse {
+  const map: Record<string, string> = {};
+  const add = (form: string, char: string) => {
+    if (form && !NOT_REVERSIBLE.has(form) && !(form in map)) map[form] = char;
+  };
+  // Only the canonical spelling, deliberately. The `typed` alternates exist to
+  // be *forgiving* when reading input, and forgiveness inverts badly: ટ accepts
+  // `tt`, so inverting the whole list turns the geminate in ઉત્તરાયણ into a
+  // retroflex — ઉટરાયણ. Doubling a letter means a stack; asking for a retroflex
+  // is what the capital is for.
+  //
+  // Two passes so the unmarked letter claims the plain spelling before the
+  // retroflex gets a look in: `t` is ત, and ટ has to be asked for as `T`.
+  const chars = Object.keys(specs);
+  for (const pass of [0, 1]) {
+    for (const char of chars) {
+      const spec = specs[char];
+      if ((spec.keyboard === undefined ? 0 : 1) !== pass) continue;
+      add(spec.typed[0], char);
+    }
+  }
+  // The alternates that are a genuinely different letter rather than a longer
+  // spelling of the same one — these collide with nothing.
+  for (const [form, char] of Object.entries(ALIAS)) if (char in specs) add(form, char);
+  // The capital escape hatch: "Ta" → `T` → ટ. Case-sensitive on purpose.
+  for (const char of chars) {
+    const kb = specs[char].keyboard;
+    if (!kb || kb[0] === kb[0].toLowerCase()) continue;
+    const stem = kb.endsWith("a") ? kb.slice(0, -1) : kb;
+    map[stem] = char;
+  }
+  return { order: Object.keys(map).sort((a, b) => b.length - a.length), map };
+}
+
+/** Single-letter spellings people really use, none of which collide. */
+const ALIAS: Record<string, string> = { c: "ચ", z: "ઝ", w: "વ", f: "ફ" };
+
+/**
+ * Spellings that are too greedy to invert. `ri` and `ru` belong to ઋ/ૃ — the
+ * vocalic r, which is genuinely rare — and letting them match here means every
+ * consonant followed by an r swallows it: `priya` comes out પૃય instead of
+ * પ્રિય. The r is nearly always the consonant, so the rare reading loses.
+ */
+const NOT_REVERSIBLE = new Set([
+  // ઋ / ૃ, the vocalic r.
+  "ri",
+  "ru",
+  // ઙ and ઞ, which our own alphabet data flags `rare` because they never stand
+  // alone. Reading `ng` as ઙ turns પલંગ into પલઙ; letting it fall through to
+  // ન + ગ lets the nasal rule below produce the anusvara that's actually written.
+  "ng",
+  "ny",
+]);
+
+const REV_CONSONANT = reverseOf(CONSONANT);
+const REV_VOWEL = reverseOf(VOWEL);
+/** Matras keyed by the *vowel* spelling, so one lookup serves both positions. */
+const MATRA_BY_ROMAN: Record<string, string> = (() => {
+  const out: Record<string, string> = {};
+  for (const [char, spec] of Object.entries(MATRA)) {
+    for (const form of spec.typed) {
+      if (!NOT_REVERSIBLE.has(form) && !(form in out)) out[form] = char;
+    }
+  }
+  return out;
+})();
+
+function matchAt(rev: Reverse, text: string, i: number): { form: string; char: string } | null {
+  for (const form of rev.order) {
+    if (text.startsWith(form, i)) return { form, char: rev.map[form] };
+  }
+  return null;
+}
+
+const MATRA_FORMS = Object.keys(MATRA_BY_ROMAN).sort((a, b) => b.length - a.length);
+
+/**
+ * The vowel spelling starting at `i`, longest first.
+ *
+ * A bare `a` returns an empty matra rather than ા, because in an abugida the
+ * plain consonant already *is* consonant + a. That's the difference between
+ * `ka` → ક and `kaa` → કા, and it's the one place the reverse tables can't be
+ * a straight inversion of the forward ones.
+ */
+function vowelAt(text: string, i: number): { form: string; matra: string } | null {
+  for (const form of MATRA_FORMS) {
+    if (text.startsWith(form, i)) {
+      return { form, matra: form === "a" ? "" : MATRA_BY_ROMAN[form] };
+    }
+  }
+  return null;
+}
+
+/**
+ * Render romanized text as Gujarati script, the way a phonetic keyboard would.
+ *
+ * Intended for the learner's own words — their name, and the freeform typing
+ * pad. Never for curriculum: see the note above. Anything it can't read
+ * (digits, punctuation, Latin it has no letter for) passes straight through.
+ */
+export function transliterateRoman(roman: string): string {
+  // Capitals are meaningful (`T` is retroflex), so this normalization keeps
+  // case — unlike normalizeTyped, whose job is the opposite.
+  const text = roman.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[’']/g, "");
+  // Word by word, because one rule below depends on where a word ends.
+  return text
+    .split(/(\s+)/)
+    .map((part) => (/^\s*$/.test(part) ? part : transliterateWord(part)))
+    .join("")
+    .normalize("NFC");
+}
+
+function transliterateWord(text: string): string {
+  let out = "";
+  let i = 0;
+  /** The bare nasal we've just emitted, if the next letter might absorb it. */
+  let pendingNasal: string | null = null;
+  /** Syllables so far — the word-final `a` rule needs to know it isn't first. */
+  let syllables = 0;
+
+  while (i < text.length) {
+    // A vowel at the start of a syllable is the independent letter, not a matra.
+    const consonant = matchAt(REV_CONSONANT, text, i);
+    if (consonant) {
+      i += consonant.form.length;
+
+      // The two keyboard rules. A nasal that we're about to stack onto an
+      // unlike consonant becomes an anusvara instead — `anand` is આનંદ, but a
+      // doubled `mammi` is મમ્મી, because a geminate really is a stack.
+      if (
+        pendingNasal &&
+        pendingNasal !== consonant.char &&
+        !NO_ANUSVARA_BEFORE.has(consonant.char)
+      ) {
+        out = out.slice(0, -1) + ANUSVARA;
+      } else if (pendingNasal) {
+        out += HALANT;
+      }
+      pendingNasal = null;
+
+      const vowel = vowelAt(text, i);
+      if (vowel) {
+        i += vowel.form.length;
+        syllables++;
+        // A written `a` at the very end of a multi-syllable word is ા, not the
+        // inherent vowel — સ્મિતા, કવિતા, નિશા. The logic is the reverse of
+        // schwa deletion: if the inherent a were meant, the romanization
+        // wouldn't have bothered writing it. One-syllable words are exempt so
+        // the alphabet keeps its own spelling: `ka` stays ક.
+        const trailing = vowel.form === "a" && i === text.length && syllables > 1;
+        out += consonant.char + (trailing ? "ા" : vowel.matra);
+        continue;
+      }
+      syllables++;
+      // No vowel: bare letter for now. Whether it needs a halant depends on
+      // what comes next, which we don't know yet — so remember and decide on
+      // the next pass. (A bare Gujarati consonant already carries its 'a'.)
+      out += consonant.char;
+      const next = matchAt(REV_CONSONANT, text, i);
+      if (next) {
+        if (NASALS.has(consonant.char)) {
+          pendingNasal = consonant.char;
+        } else {
+          out += HALANT;
+        }
+      }
+      continue;
+    }
+
+    const vowel = matchAt(REV_VOWEL, text, i);
+    if (vowel) {
+      // A vowel directly after a bare nasal still closes the nasal's syllable
+      // normally — no stack, no anusvara.
+      pendingNasal = null;
+      i += vowel.form.length;
+      out += vowel.char;
+      continue;
+    }
+
+    // Unknown: a space, a digit, punctuation, a letter we have no sound for.
+    pendingNasal = null;
+    out += text[i];
+    i++;
+  }
+
+  return out.normalize("NFC");
 }

@@ -22,9 +22,9 @@
 // Pure — no I/O, no DOM, no provider. The iOS client reuses this verbatim.
 // ─────────────────────────────────────────────────────────────────────────
 
-import type { CardState } from "./srs";
-import type { Progress } from "./progress";
-import type { Streak } from "./gamification";
+import type { CardState } from "./srs.ts";
+import type { Progress } from "./progress.ts";
+import type { Streak } from "./gamification.ts";
 
 /** Milliseconds for an ISO date, or -Infinity when absent/unparseable. */
 function at(iso: string | undefined): number {
@@ -134,7 +134,11 @@ export function mergeProgress(a: Progress, b: Progress): Progress {
 
     goal: pickLatest(a.goal, b.goal, ta, tb),
     motivation: pickLatest(a.motivation, b.motivation, ta, tb),
-    wantsGrammar: Boolean(a.wantsGrammar || b.wantsGrammar),
+    // A preference, so the latest write wins — an OR-merge would make it
+    // impossible to ever turn off from a second device.
+    wantsGrammar: pickLatest(a.wantsGrammar, b.wantsGrammar, ta, tb),
+    name: pickLatest(a.name, b.name, ta, tb),
+    nameGujarati: pickLatest(a.nameGujarati, b.nameGujarati, ta, tb),
     onboarded: a.onboarded || b.onboarded,
 
     xp: Math.max(a.xp, b.xp),
@@ -145,6 +149,12 @@ export function mergeProgress(a: Progress, b: Progress): Progress {
     completedScenarios: union(a.completedScenarios, b.completedScenarios),
     aksharMastered: union(a.aksharMastered, b.aksharMastered),
     completedGrammar: union(a.completedGrammar, b.completedGrammar),
+    // ?? [] because a blob written by an older build predates these fields, and
+    // the cloud copy doesn't go through loadProgress's backfill.
+    typedWords: union(a.typedWords ?? [], b.typedWords ?? []),
+    // Union, so a milestone celebrated on the phone is never celebrated again
+    // on the iPad — the fuss is a one-time thing.
+    celebratedMilestones: union(a.celebratedMilestones ?? [], b.celebratedMilestones ?? []),
   };
 }
 

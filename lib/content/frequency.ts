@@ -18,8 +18,8 @@
 // collides in the shared SRS pool.
 // ─────────────────────────────────────────────────────────────────────────
 
-import type { LexItem } from "../core/types";
-import type { Progress } from "../core/progress";
+import type { LexItem } from "../core/types.ts";
+import type { Progress } from "../core/progress.ts";
 
 /** How many words unlock per tier. One tier opens per completed lesson. */
 export const FREQ_TIER_SIZE = 8;

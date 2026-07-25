@@ -27,6 +27,7 @@ import {
   typedRivals,
   acceptsTyped,
   isTypable,
+  transliterateRoman,
 } from "../lib/core/translit.ts";
 import { ITEMS } from "../lib/content/units.ts";
 import { FREQUENCY_ITEMS } from "../lib/content/frequency.ts";
@@ -81,8 +82,44 @@ function check(label: string, actual: unknown, expected: unknown) {
   check("દિવસ typed", typedCanonical("દિવસ"), "divas");
 
   // Conjuncts fall out of stem concatenation.
-  check("સ્વાદિષ્ટ typed", typedCanonical("સ્વાદિષ્ટ"), "svaadisht");
+  check("સ્વાદિષ્ટ typed", typedCanonical("સ્વાદિષ્ટ"), "svaadiSht");
   check("barakshari કી", typedCanonical("કી"), "kee");
+
+  // A retroflex keeps its capital wherever it falls, not just at the front —
+  // `rotalee` would give you રોતલી, the dental, on a real phone.
+  check("રોટલી typed", typedCanonical("રોટલી"), "roTalee");
+  check("ઘડિયાળ typed", typedCanonical("ઘડિયાળ"), "ghaDiyaaL");
+  // ...and schwa deletion is a *word*-final rule, not an end-of-string one.
+  check("કેમ છો? typed", typedCanonical("કેમ છો?"), "kem chho?");
+}
+
+// ── The other direction: roman in, script out ─────────────────────────────
+// transliterateRoman() is the one function here that *produces* Gujarati, for
+// the learner's own name and freeform typing (never for curriculum). These are
+// the keyboard rules it stands on.
+{
+  const t = transliterateRoman;
+  check("a bare consonant carries its own 'a'", t("ka"), "ક");
+  check("'kaa' is the long one", t("kaa"), "કા");
+  // Two adjacent consonants stack — the rule that makes પ્રિય possible.
+  check("priya stacks", t("priya"), "પ્રિયા");
+  check("dhruv stacks", t("dhruv"), "ધ્રુવ");
+  check("smita stacks", t("smita"), "સ્મિતા");
+  // A nasal before a stop is the anusvara, before a semivowel it's a conjunct.
+  check("anand nasalizes", t("anand"), "અનંદ");
+  check("palang nasalizes", t("palang"), "પલંગ");
+  check("jamyaa does not", t("jamyaa"), "જમ્યા");
+  // A doubled letter is a geminate, never a retroflex.
+  check("mammi geminates", t("mammi"), "મમ્મિ");
+  check("uttaraayaN geminates", t("uttaraayaN"), "ઉત્તરાયણ");
+  // The capital is how you ask for a retroflex, same as on a real keyboard.
+  check("harshal is dental", t("harshal"), "હર્શલ");
+  check("harShal is retroflex", t("harShal"), "હર્ષલ");
+  // A written final 'a' is ા, because the inherent one wouldn't be written.
+  check("kavita ends long", t("kavita"), "કવિતા");
+  check("kem does not", t("kem"), "કેમ");
+  // Anything it has no letter for survives untouched.
+  check("punctuation passes through", t("kem cho?"), "કેમ ચો?");
 }
 
 interface Case {
@@ -148,6 +185,27 @@ for (const c of [...letters, ...cells, ...words]) {
     .join("");
   if (rebuilt !== c.guj.normalize("NFC")) {
     hardFailures.push(`${c.label}: segmentation doesn't round-trip → "${rebuilt}"`);
+  }
+}
+
+// ── Tier 1b: the alphabet round-trips through the reverse engine ──────────
+//
+// Type what we teach, get back the letter we taught. Systematic, so a miss is a
+// bug in the tables rather than a fact about Gujarati — this is what caught the
+// mid-word retroflex and the string-final schwa in the first place.
+
+/** ઙ and ઞ can't be reached by typing at all: they never stand alone, which is
+ *  why our own alphabet data flags them `rare` and keeps them out of drills. A
+ *  keyboard would give you ંગ for `nga` too. */
+const UNREACHABLE = new Set(["ઙ", "ઞ"]);
+
+for (const c of [...letters, ...cells]) {
+  if (UNREACHABLE.has(c.guj)) continue;
+  const back = transliterateRoman(typedCanonical(c.guj));
+  if (back !== c.guj.normalize("NFC")) {
+    hardFailures.push(
+      `${c.label}: typing "${typedCanonical(c.guj)}" gives ${back}, not ${c.guj}`,
+    );
   }
 }
 

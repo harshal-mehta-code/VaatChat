@@ -37,7 +37,7 @@
 // load it directly. Paste exports from Stroke Lab straight in here.
 // ─────────────────────────────────────────────────────────────────────────
 
-import type { StrokeGlyph } from "../core/types";
+import type { StrokeGlyph } from "../core/types.ts";
 
 export const STROKE_GLYPHS: StrokeGlyph[] = [
   {

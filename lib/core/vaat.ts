@@ -9,7 +9,7 @@
 // the same shape behind a serverless route later.
 // ─────────────────────────────────────────────────────────────────────────
 
-import type { DialogueChoice, DialogueNode, Scenario } from "./types";
+import type { DialogueChoice, DialogueNode, Scenario } from "./types.ts";
 
 export interface VaatTurn {
   node: DialogueNode;

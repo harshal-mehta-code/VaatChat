@@ -59,6 +59,8 @@ interface Question {
   options?: string[];
   /** Letters a real keyboard would offer for the same lowercase typing. */
   rivals?: string[];
+  /** The vocabulary item, on the word rung — what the journey counts. */
+  wordId?: string;
 }
 
 export interface TypePools {
@@ -123,6 +125,7 @@ function buildSession(
     .map((w, i) => ({
       key: `${w.id}-${i}`,
       rung: "word" as const,
+      wordId: w.id,
       guj: w.gujarati,
       // The authored romanization, not the derived one: it's native-verified,
       // the pool is already filtered to romans the matcher accepts, and the
@@ -171,7 +174,7 @@ function ScriptReveal({
 }
 
 export default function TypeSession({ pools, onExit }: { pools: TypePools; onExit: () => void }) {
-  const { progress, gradeItem, award } = useProgress();
+  const { progress, gradeItem, award, recordTypedWord } = useProgress();
   const [showIntro, setShowIntro] = useState(false);
 
   useEffect(() => {
@@ -246,6 +249,10 @@ export default function TypeSession({ pools, onExit }: { pools: TypePools; onExi
     for (const id of q.cardIds) gradeItem(id, ok ? "good" : "again");
     if (ok) {
       const xp = q.rung === "word" ? XP.wordTyped : XP.exercise;
+      // A whole word, in script, from roman — that's the thing "text the family
+      // group" is actually made of, so the journey counts it (distinct words
+      // only; see recordTypedWord).
+      if (q.rung === "word" && q.wordId) recordTypedWord(q.wordId);
       award(xp);
       setEarned((e) => e + xp);
       setCorrectCount((c) => c + 1);

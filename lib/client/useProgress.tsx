@@ -21,11 +21,16 @@ import {
   markAksharMastered as _markAksharMastered,
   completeGrammar as _completeGrammar,
   setOnboarding as _setOnboarding,
+  setName as _setName,
+  setWantsGrammar as _setWantsGrammar,
+  recordTypedWord as _recordTypedWord,
+  celebrateMilestones as _celebrateMilestones,
   award as _award,
   touchProgress,
-} from "../core/progress";
-import type { Grade3 } from "../core/srs";
-import { useCloudSync, type CloudSync } from "./useCloudSync";
+} from "../core/progress.ts";
+import type { OnboardingAnswers } from "../core/progress.ts";
+import type { Grade3 } from "../core/srs.ts";
+import { useCloudSync, type CloudSync } from "./useCloudSync.ts";
 
 export interface ProgressApi {
   progress: Progress;
@@ -35,7 +40,11 @@ export interface ProgressApi {
   completeScenario: (scenarioId: string) => void;
   markAkshar: (aksharId: string) => void;
   completeGrammar: (conceptId: string) => void;
-  finishOnboarding: (goal: string, motivation: string, wantsGrammar?: boolean) => void;
+  finishOnboarding: (answers: OnboardingAnswers) => void;
+  setName: (name: string, nameGujarati: string) => void;
+  setWantsGrammar: (on: boolean) => void;
+  recordTypedWord: (wordId: string) => void;
+  celebrateMilestones: (ids: string[]) => void;
   award: (xp: number) => void;
   setProgress: (next: Progress) => void;
   /** Cross-device sync. Always present; `status: "off"` when unconfigured. */
@@ -87,8 +96,24 @@ function useProgressState(): ProgressApi {
     [update],
   );
   const finishOnboarding = useCallback(
-    (goal: string, motivation: string, wantsGrammar = false) =>
-      update(_setOnboarding(progressRef.current, goal, motivation, wantsGrammar)),
+    (answers: OnboardingAnswers) => update(_setOnboarding(progressRef.current, answers)),
+    [update],
+  );
+  const setName = useCallback(
+    (name: string, nameGujarati: string) =>
+      update(_setName(progressRef.current, name, nameGujarati)),
+    [update],
+  );
+  const setWantsGrammar = useCallback(
+    (on: boolean) => update(_setWantsGrammar(progressRef.current, on)),
+    [update],
+  );
+  const recordTypedWord = useCallback(
+    (wordId: string) => update(_recordTypedWord(progressRef.current, wordId)),
+    [update],
+  );
+  const celebrateMilestones = useCallback(
+    (ids: string[]) => update(_celebrateMilestones(progressRef.current, ids)),
     [update],
   );
   const award = useCallback((xp: number) => update(_award(progressRef.current, xp)), [update]);
@@ -107,6 +132,10 @@ function useProgressState(): ProgressApi {
     markAkshar,
     completeGrammar,
     finishOnboarding,
+    setName,
+    setWantsGrammar,
+    recordTypedWord,
+    celebrateMilestones,
     award,
     setProgress: update,
     sync,
