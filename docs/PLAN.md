@@ -136,11 +136,35 @@ We deliberately learn from **both** Duolingo's wins *and* its documented failure
 - **"Mastery over minutes."** The headline metric is *words/letters/phrases you can actually use*, not a raw streak count. The streak is secondary and gentle.
 - **Streak insurance & grace.** Auto-forgiveness (real life happens — festivals, exams). No dark-pattern guilt. A missed day pauses, never shames.
 - **No forced competitive leaderboards.** Leagues are **opt-in** and framed as friendly. The default social layer is **cooperative**: a *family/community garden* that everyone's practice grows together (relatedness > rivalry).
-- **Culturally-themed rewards** instead of generic gems: collect **rangoli patterns**, fill a **thali** with dishes you can name, light **diyas** on a Diwali progress scene, unlock **garba** tracks. Rewards *are* the culture.
+- **Milestones, not point thresholds.** *Shipped 2026-07-25 — see §5.1.* The first pass at this was six XP gates ("Reach 500 XP") and it was filler: it measured how much someone had *done* rather than what they could now *do*. Replaced by capability statements.
+- **Culturally-themed rewards** instead of generic gems: collect **rangoli patterns**, fill a **thali** with dishes you can name, light **diyas** on a Diwali progress scene, unlock **garba** tracks. Rewards *are* the culture. (Still open — the milestone list carries the emoji, not yet the scene.)
 - **Festival events** tied to the real calendar — a **Navratri 9-night challenge**, an **Uttarayan kite** streak in January — so the app breathes with Gujarati life.
 - **Intrinsic anchors** (per Self-Determination Theory): your personal *Vaat* goal, progress you can *feel* in real conversations, and quests that pay off in actual relationships.
 
 The bet: retention that comes from *feeling more connected to family and identity* is deeper and healthier than retention from fear of losing a number — and it's exactly what heritage learners want.
+
+### 5.1 The journey — how far am I? *(shipped 2026-07-25)*
+
+Progress had been accumulating in four disconnected places: XP and a level on home, letters-known and letters-you-can-write in Akshar Lab, deck counts in Review, grammar nowhere visible at all. Every one of them was true and none of them answered the only question a learner actually asks.
+
+`lib/core/milestones.ts` is the roof. Ten named capabilities, criteria computed from `Progress`, content injected through a catalog so the core stays portable. They deliberately cut **across** pillars — reading a letter, forming one by hand, typing one, and understanding why a word changes shape are four different skills, and a journey that counted only one would quietly tell the learner the other three don't matter.
+
+Two design rules worth keeping:
+
+- **A milestone is a sentence you'd say out loud.** "Write your own name." "Text the family group." Not a number. `check:milestones` enforces the weak version of this (a title may not start with a digit) and the strong version by construction: every criterion is a capability.
+- **No milestone may be free, unreachable, or a duplicate.** The guard walks a learner from nothing to everything and asserts all three. The duplicate check is the one that earned its keep immediately — with a single Vaat scenario, "finish a conversation" and "finish every conversation" were the same achievement under two names, which is a *content* gap surfacing as a journey defect.
+
+**Write your own name** is the emotional peak and the only one that's different for every learner. It needed roman → script, which meant `transliterateRoman()` — the one place in this codebase that produces Gujarati nobody authored. That's a real exception to a rule three guards enforce, and it's bounded: the learner's own name and freeform typing, where they are the authority, and nothing it produces reaches a drill, a lesson, or an SRS card.
+
+### 5.2 The daily mix *(shipped 2026-07-25)*
+
+`/mix` — one five-minute sitting drawn from every pillar, with the legs and their order changing each time.
+
+The problem it solves is that the core loop was ~80% recognition. Recognition is the cheapest thing to build and the least transferable; it's the reason people finish a tree and freeze in conversation. The three parts of this app that genuinely ask for production — the stroke pad, the typing ladder, the grammar builds — were each behind their own button, which made every practice session start with a decision.
+
+It's also the next rung on the variation ladder from §7.1. Seeded shuffling stopped the *questions* arriving in the same order; the mix stops the *session* having the same shape. `check:variation` asserts the mix never offers a leg the learner has nothing to do, and that eight sittings produce at least four distinct shapes.
+
+**Still open here:** the vocab lesson spine itself is still multiple-choice. Assembly drills — build the word from syllable tiles, the phrase from word tiles — would make the spine produce rather than recognise, and the `build` UI already exists in `GrammarRunner`. That's the next thing.
 
 ---
 
