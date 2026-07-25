@@ -25,10 +25,10 @@ interface Question {
 
 const SESSION_SIZE = 12;
 
-function buildSession(pool: Akshar[]): Question[] {
+function buildSession(pool: Akshar[], size: number): Question[] {
   const modes: Mode[] = ["sound", "letter", "audio"];
   return shuffled(pool, Math.random)
-    .slice(0, Math.min(SESSION_SIZE, pool.length))
+    .slice(0, Math.min(size, pool.length))
     .map((target, i) => {
       const distractors = shuffled(
         pool.filter((a) => a.type === target.type && a.id !== target.id),
@@ -43,10 +43,23 @@ function buildSession(pool: Akshar[]): Question[] {
     });
 }
 
-export default function AksharPractice({ pool, onExit }: { pool: Akshar[]; onExit: () => void }) {
+export default function AksharPractice({
+  pool,
+  onExit,
+  size = SESSION_SIZE,
+  onComplete,
+}: {
+  pool: Akshar[];
+  onExit: () => void;
+  /** Shorter when this is one leg of the daily mix (lib/core/mix.ts). */
+  size?: number;
+  /** Set by the mix: hand control back instead of showing our own summary. */
+  onComplete?: (correct: number, total: number) => void;
+}) {
   const { gradeItem, award } = useProgress();
   const [round, setRound] = useState(0);
-  const session = useMemo(() => buildSession(pool), [pool, round]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const session = useMemo(() => buildSession(pool, size), [pool, round]);
 
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
@@ -73,6 +86,10 @@ export default function AksharPractice({ pool, onExit }: { pool: Akshar[]; onExi
 
   function next() {
     if (index + 1 >= session.length) {
+      if (onComplete) {
+        onComplete(correctCount, session.length);
+        return;
+      }
       setDone(true);
     } else {
       setIndex(index + 1);

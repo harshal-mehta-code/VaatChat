@@ -304,7 +304,9 @@ export default function GrammarRunner({ concept }: { concept: GrammarConcept }) 
 
 // ── Choose / cloze drill ─────────────────────────────────────────────────────
 
-function ChooseDrill({
+/** Exported so the daily mix can run a single drill without the whole concept
+ *  runner around it (app/mix/page.tsx). */
+export function ChooseDrill({
   exercise,
   optionSeed,
   onAnswered,
@@ -384,7 +386,8 @@ function ChooseDrill({
 
 // ── Build (word-order) drill ─────────────────────────────────────────────────
 
-function BuildDrill({
+/** Exported for the daily mix — see ChooseDrill. */
+export function BuildDrill({
   exercise,
   optionSeed,
   onAnswered,

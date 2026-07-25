@@ -22,12 +22,12 @@ interface Question {
 
 const SESSION_SIZE = 10;
 
-function buildSession(pool: LexItem[]): Question[] {
+function buildSession(pool: LexItem[], size: number): Question[] {
   // Fall back to the full item bank for distractors when the pool itself is
   // too small to offer three other meanings.
   const distractorBank = pool.length > 3 ? pool : ITEMS;
   return shuffled(pool, Math.random)
-    .slice(0, Math.min(SESSION_SIZE, pool.length))
+    .slice(0, Math.min(size, pool.length))
     .map((target, i) => {
       const distractors = shuffled(
         distractorBank.filter((it) => it.id !== target.id && it.english !== target.english),
@@ -41,14 +41,27 @@ function buildSession(pool: LexItem[]): Question[] {
     });
 }
 
-export default function ReviewSession({ pool, onExit }: { pool: LexItem[]; onExit: () => void }) {
+export default function ReviewSession({
+  pool,
+  onExit,
+  size = SESSION_SIZE,
+  onComplete,
+}: {
+  pool: LexItem[];
+  onExit: () => void;
+  /** Shorter when this is one leg of the daily mix (lib/core/mix.ts). */
+  size?: number;
+  /** Set by the mix: hand control back instead of showing our own summary. */
+  onComplete?: (correct: number, total: number) => void;
+}) {
   const { gradeItem, award } = useProgress();
   const [round, setRound] = useState(0);
   // Freeze the deck at session start. Grading updates `progress`, which changes
   // the parent-derived `pool` reference every answer — without this snapshot
   // that would rebuild the session mid-question and mis-judge your selection.
   const [poolSnapshot] = useState(pool);
-  const session = useMemo(() => buildSession(poolSnapshot), [poolSnapshot, round]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const session = useMemo(() => buildSession(poolSnapshot, size), [poolSnapshot, round]);
 
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
@@ -75,6 +88,10 @@ export default function ReviewSession({ pool, onExit }: { pool: LexItem[]; onExi
 
   function next() {
     if (index + 1 >= session.length) {
+      if (onComplete) {
+        onComplete(correctCount, session.length);
+        return;
+      }
       setDone(true);
     } else {
       setIndex(index + 1);

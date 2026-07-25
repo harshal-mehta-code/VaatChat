@@ -36,7 +36,7 @@ const TABS: Tab[] = [
 
 // Full-screen focus modes where the tab bar should get out of the way.
 // `/dev/*` are internal authoring tools — not part of the learner's app.
-const IMMERSIVE = /^\/(lesson|vaat|vyakaran)\/[^/]+|^\/dev\//;
+const IMMERSIVE = /^\/(lesson|vaat|vyakaran)\/[^/]+|^\/mix$|^\/dev\//;
 
 export default function TabBar() {
   const pathname = usePathname();

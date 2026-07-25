@@ -78,6 +78,7 @@ function buildSession(
   pools: TypePools,
   rungFor: (akshar: Akshar) => Rung,
   knownLetters: number,
+  size: number,
 ): Question[] {
   const letterQs: Question[] = shuffled(pools.letters, Math.random).map((a, i) => {
     const rung = rungFor(a);
@@ -137,8 +138,10 @@ function buildSession(
       cardIds: [w.id],
     }));
 
-  const tail = [...syllableQs, ...wordQs];
-  return [...letterQs.slice(0, Math.max(0, SESSION_SIZE - tail.length)), ...tail];
+  // A short leg of the daily mix keeps the payoff and trims the letters —
+  // dropping the word rung would take out the one rung with a real-world point.
+  const tail = [...syllableQs, ...wordQs].slice(0, Math.max(1, size - 1));
+  return [...letterQs.slice(0, Math.max(0, size - tail.length)), ...tail];
 }
 
 /** The script assembling under her fingers — cluster by cluster, as she types. */
@@ -173,7 +176,19 @@ function ScriptReveal({
   );
 }
 
-export default function TypeSession({ pools, onExit }: { pools: TypePools; onExit: () => void }) {
+export default function TypeSession({
+  pools,
+  onExit,
+  size = SESSION_SIZE,
+  onComplete,
+}: {
+  pools: TypePools;
+  onExit: () => void;
+  /** Shorter when this is one leg of the daily mix (lib/core/mix.ts). */
+  size?: number;
+  /** Set by the mix: hand control back instead of showing our own summary. */
+  onComplete?: (correct: number, total: number) => void;
+}) {
   const { progress, gradeItem, award, recordTypedWord } = useProgress();
   const [showIntro, setShowIntro] = useState(false);
 
@@ -191,11 +206,11 @@ export default function TypeSession({ pools, onExit }: { pools: TypePools; onExi
   // reshuffle the questions *while one is being answered*, so your tap lands on
   // whatever replaced the question you meant. (Same trap, same fix as
   // ReviewSession; it bites any session whose pool is derived from progress.)
-  const live = useRef({ pools, progress });
-  live.current = { pools, progress };
+  const live = useRef({ pools, progress, size });
+  live.current = { pools, progress, size };
 
   const compose = useCallback(() => {
-    const { pools: p, progress: pr } = live.current;
+    const { pools: p, progress: pr, size: n } = live.current;
     const knownLetters = p.letters.filter((a) => itemStatus(pr, a.id) === "known").length;
     return buildSession(
       p,
@@ -206,6 +221,7 @@ export default function TypeSession({ pools, onExit }: { pools: TypePools; onExi
         return "type";
       },
       knownLetters,
+      n,
     );
   }, []);
 
@@ -296,6 +312,10 @@ export default function TypeSession({ pools, onExit }: { pools: TypePools; onExi
 
   function next() {
     if (index + 1 >= session.length) {
+      if (onComplete) {
+        onComplete(correctCount, session.length);
+        return;
+      }
       setDone(true);
       return;
     }

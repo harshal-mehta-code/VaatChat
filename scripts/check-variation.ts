@@ -20,6 +20,7 @@
 
 import { planLesson, SESSION_SHAPE } from "../lib/core/session.ts";
 import { makeRng, shuffled, sample } from "../lib/core/variation.ts";
+import { planMix } from "../lib/core/mix.ts";
 import { UNITS } from "../lib/content/units.ts";
 import { ITEMS_BY_ID } from "../lib/content/units.ts";
 import { GRAMMAR_MODULES, drillPool } from "../lib/content/grammar.ts";
@@ -177,6 +178,60 @@ for (const concept of CONCEPTS) {
   expect(`${concept.id}: drills barely reorder`, orders.size >= 3, `${orders.size} orders`);
 }
 
+// ── The daily mix ─────────────────────────────────────────────────────────
+//
+// Two ways this goes wrong quietly: it offers a leg the learner has nothing to
+// do (a writing leg on day one, a grammar leg before any concept), or it stops
+// varying and becomes the same four things in the same order every day — which
+// is the exact failure this whole file exists to catch.
+
+{
+  const DAYS = ["d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8"];
+
+  const beginner = { deck: 0, writable: 0, concepts: 0 };
+  const seasoned = { deck: 40, writable: 20, concepts: 6 };
+
+  for (const [label, avail] of [
+    ["day one", beginner],
+    ["seasoned", seasoned],
+  ] as const) {
+    for (const seed of DAYS) {
+      const mix = planMix(avail, makeRng(seed));
+      expect(`${label}/${seed}: empty mix`, mix.length > 0);
+      for (const leg of mix) {
+        expect(`${label}/${seed}: leg of no length`, leg.size > 0, leg.kind);
+        if (leg.kind === "review") {
+          expect(`${label}/${seed}: review leg with no deck`, avail.deck > 0);
+        }
+        if (leg.kind === "write") {
+          expect(`${label}/${seed}: writing leg with nothing started`, avail.writable > 0);
+        }
+        if (leg.kind === "grammar") {
+          expect(`${label}/${seed}: grammar leg with no concept behind it`, avail.concepts > 0);
+        }
+      }
+      const kinds = mix.map((l) => l.kind);
+      expect(`${label}/${seed}: the same leg twice`, new Set(kinds).size === kinds.length, kinds.join(","));
+    }
+  }
+
+  // Due cards are the one thing with a real cost to skipping, so they lead.
+  for (const seed of DAYS) {
+    const mix = planMix(seasoned, makeRng(seed));
+    expect(`${seed}: review isn't first`, mix[0]?.kind === "review", mix[0]?.kind);
+  }
+
+  // ...and everything after it moves.
+  const shapes = new Set(
+    DAYS.map((s) => planMix(seasoned, makeRng(s)).map((l) => l.kind).join("|")),
+  );
+  expect(
+    "the daily mix is the same every day",
+    shapes.size >= 4,
+    `${shapes.size} shapes from ${DAYS.length} days`,
+  );
+}
+
 // ── Report ────────────────────────────────────────────────────────────────
 
 const sampleLesson = LESSONS[0];
@@ -185,6 +240,17 @@ console.log(
   `Session length       : ${planLesson(sampleLesson.exercises, makeRng("x")).length} steps from a ${sampleLesson.exercises.length}-exercise grid (${sampleLesson.id})`,
 );
 console.log(`Distractor pools     : ${pools}, ${thin} with fewer than 4 candidates`);
+console.log(
+  `Daily mix            : ${
+    new Set(
+      ["d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8"].map((s) =>
+        planMix({ deck: 40, writable: 20, concepts: 6 }, makeRng(s))
+          .map((l) => l.kind)
+          .join("|"),
+      ),
+    ).size
+  } distinct shapes from 8 sittings`,
+);
 console.log(
   `Grammar concepts     : ${CONCEPTS.length}, ${CONCEPTS.reduce((n, c) => n + drillPool(c).length, 0)} drills in their pools`,
 );

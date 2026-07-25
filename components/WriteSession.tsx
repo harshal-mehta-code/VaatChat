@@ -101,9 +101,15 @@ export interface WritePools {
 export default function WriteSession({
   pools,
   onExit,
+  size = SESSION_SIZE,
+  onComplete,
 }: {
   pools: WritePools;
   onExit: () => void;
+  /** Shorter when this is one leg of the daily mix (lib/core/mix.ts). */
+  size?: number;
+  /** Set by the mix: hand control back instead of showing our own summary. */
+  onComplete?: (correct: number, total: number) => void;
 }) {
   const { progress, gradeItem, award } = useProgress();
 
@@ -112,25 +118,27 @@ export default function WriteSession({
   // every answer — reacting to that would rebuild the deck mid-question and
   // mis-attribute the attempt on screen. Same trap ReviewSession and
   // TypeSession each had to close.
-  const live = useRef({ pools, progress });
-  live.current = { pools, progress };
+  const live = useRef({ pools, progress, size });
+  live.current = { pools, progress, size };
 
   const compose = useCallback(() => {
-    const { pools: p, progress: pr } = live.current;
+    const { pools: p, progress: pr, size: n } = live.current;
     const started = (id: string) => itemStatus(pr, writingCardId(id)) !== "new";
 
     // A word earns its place only once every letter in it is already under way.
     // Nothing is gated on a count or a level — it's the actual prerequisite,
     // which is why it can sit in the same session instead of behind a door.
     const ready = p.words.filter((w) => (w.requires ?? []).every(started));
-    const words = shuffled(ready, Math.random).slice(0, WORDS_PER_SESSION);
+    // A two-target leg gets one word at most, or it would be all word and no
+    // letter — the ratio matters more than the count when the session is short.
+    const words = shuffled(ready, Math.random).slice(0, Math.min(WORDS_PER_SESSION, Math.max(1, n - 1)));
 
     // New letters first — the demonstration is the draw, so lead with it.
     const fresh = p.letters.filter((t) => !started(t.id));
     const seen = p.letters.filter((t) => started(t.id));
     const letters = [...shuffled(fresh, Math.random), ...shuffled(seen, Math.random)].slice(
       0,
-      Math.max(0, SESSION_SIZE - words.length),
+      Math.max(0, n - words.length),
     );
     // Words last: they're the payoff, and they read as one.
     return [...letters, ...words];
@@ -180,6 +188,13 @@ export default function WriteSession({
     setStars((s) => [...s, score.stars]);
 
     if (index + 1 >= session.length) {
+      if (onComplete) {
+        // "Correct" for handwriting is two stars or better — the same bar the
+        // SRS grade uses, so the mix summary agrees with the card.
+        const cleared = [...stars, score.stars].filter((n) => n >= 2).length;
+        onComplete(cleared, session.length);
+        return;
+      }
       setDone(true);
     } else {
       setIndex(index + 1);

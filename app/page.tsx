@@ -100,6 +100,25 @@ export default function Home() {
               </span>
             </Link>
           )}
+          {/* The daily mix. Offered from the second lesson on — before that
+              there's nothing to mix, and a session that's four legs of the
+              same thing is worse than the lesson it interrupted. */}
+          {progress.completedLessons.length >= 1 && (
+            <Link
+              href="/mix"
+              className="mt-2 flex items-center justify-between gap-3 rounded-2xl border border-magenta/40 bg-magenta/10 px-5 py-3.5 transition-transform active:scale-[.99]"
+            >
+              <span className="flex flex-col text-left">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-magenta">
+                  Five minutes · a bit of everything
+                </span>
+                <span className="text-base font-semibold text-ink">Today&apos;s mix</span>
+              </span>
+              <span className="text-xl" aria-hidden="true">
+                🎲
+              </span>
+            </Link>
+          )}
           {dueCount > 0 && (
             <Link
               href="/review"
